@@ -205,7 +205,7 @@ def rename_and_cleanup(extraction_folder, model_filepath, index_filepath):
             shutil.rmtree(full_path)
 
 
-def download_file(url, destination):
+def download_hubert_file(url, destination):
     response = requests.get(url, stream=True)
     response.raise_for_status()
     with open(destination, "wb") as out_file:
@@ -227,7 +227,7 @@ def download_and_replace_model(
         tmp_model_path = os.path.join(EMBEDDERS_DIR, "tmp_model.pt")
 
         progress(0.4, desc=f'Установка модели "{model_name}"...')
-        download_file(model_url, tmp_model_path)
+        download_hubert_file(model_url, tmp_model_path)
 
         progress(0.8, desc="Удаление старой HuBERT модели...")
         if os.path.exists(HUBERT_BASE_PATH):
