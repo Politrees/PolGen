@@ -23,7 +23,7 @@ def load_rvc_model(rvc_model):
     model_dir = os.path.join(RVC_MODELS_DIR, rvc_model)
     # Получаем список файлов в директории модели
     model_files = os.listdir(model_dir)
-    
+
     # Находим файл модели с расширением .pth
     rvc_model_path = next(
         (os.path.join(model_dir, f) for f in model_files if f.endswith(".pth")), None
@@ -61,7 +61,7 @@ def load_hubert(model_path):
 def get_vc(model_path):
     # Загружаем состояние модели из файла
     cpt = torch.load(model_path, map_location="cpu", weights_only=True)
-    
+
     # Проверяем корректность формата модели
     if "config" not in cpt or "weight" not in cpt:
         raise ValueError(

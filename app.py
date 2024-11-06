@@ -6,7 +6,13 @@ from tabs.welcome import welcome_tab
 from tabs.inference import inference_tab
 from tabs.edge_tts import edge_tts_tab
 from tabs.uvr import uvr_tab
-from tabs.install import url_download, zip_upload, files_upload, install_hubert_tab, output_message
+from tabs.install import (
+    url_download,
+    zip_upload,
+    files_upload,
+    install_hubert_tab,
+    output_message,
+)
 
 
 DEFAULT_PORT = 4000
