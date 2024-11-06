@@ -38,7 +38,9 @@ def voice_pipeline(
     progress=gr.Progress(track_tqdm=True),
 ):
     if not uploaded_file:
-        raise ValueError("Не удалось найти аудиофайл. Убедитесь, что файл загрузился или проверьте правильность пути к нему.")
+        raise ValueError(
+            "Не удалось найти аудиофайл. Убедитесь, что файл загрузился или проверьте правильность пути к нему."
+        )
     if not voice_model:
         raise ValueError("Выберите модель голоса для преобразования.")
     if not os.path.exists(uploaded_file):
@@ -117,7 +119,9 @@ def inference_tab():
     with gr.Row(equal_height=False):
         with gr.Column(scale=1, variant="panel"):
             with gr.Group():
-                rvc_model = gr.Dropdown(get_folders(RVC_MODELS_DIR), label="Голосовые модели:")
+                rvc_model = gr.Dropdown(
+                    get_folders(RVC_MODELS_DIR), label="Голосовые модели:"
+                )
                 ref_btn = gr.Button("Обновить список моделей", variant="primary")
             with gr.Group():
                 pitch = gr.Slider(

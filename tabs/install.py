@@ -131,7 +131,9 @@ def upload_zip_file(zip_path, dir_name, progress=gr.Progress(track_tqdm=True)):
 
 
 # Функция для загрузки отдельных файлов модели (.pth и .index)
-def upload_separate_files(pth_file, index_file, dir_name, progress=gr.Progress(track_tqdm=True)):
+def upload_separate_files(
+    pth_file, index_file, dir_name, progress=gr.Progress(track_tqdm=True)
+):
     try:
         extraction_folder = os.path.join(RVC_MODELS_DIR, dir_name)
         if os.path.exists(extraction_folder):
@@ -169,13 +171,9 @@ def extract_zip(extraction_folder, zip_name):
     for root, _, files in os.walk(extraction_folder):
         for name in files:
             file_path = os.path.join(root, name)
-            if (
-                name.endswith(".index") and os.stat(file_path).st_size > 1024 * 100
-            ):
+            if name.endswith(".index") and os.stat(file_path).st_size > 1024 * 100:
                 index_filepath = file_path
-            if (
-                name.endswith(".pth") and os.stat(file_path).st_size > 1024 * 1024 * 40
-            ):
+            if name.endswith(".pth") and os.stat(file_path).st_size > 1024 * 1024 * 40:
                 model_filepath = file_path
 
     if not model_filepath:
@@ -214,7 +212,9 @@ def download_file(url, destination):
             out_file.write(chunk)
 
 
-def download_and_replace_model(model_name, custom_url, progress=gr.Progress(track_tqdm=True)):
+def download_and_replace_model(
+    model_name, custom_url, progress=gr.Progress(track_tqdm=True)
+):
     try:
         if custom_url:
             if not re.search(r"\.pt(\?.*)?$", custom_url):
@@ -345,7 +345,9 @@ def install_hubert_tab(progress=gr.Progress(track_tqdm=True)):
 # Основная функция для вызова из командной строки
 def main():
     if len(sys.argv) != 3:
-        print('\nИспользование:\npython3 -m rvc.modules.model_manager "url" "dir_name"\n')
+        print(
+            '\nИспользование:\npython3 -m rvc.modules.model_manager "url" "dir_name"\n'
+        )
         sys.exit(1)
 
     url = sys.argv[1]

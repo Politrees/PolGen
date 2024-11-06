@@ -153,7 +153,9 @@ def edge_tts_tab():
     with gr.Row(equal_height=False):
         with gr.Column(variant="panel", scale=2):
             with gr.Group():
-                rvc_model = gr.Dropdown(get_folders(RVC_MODELS_DIR), label="Модели голоса")
+                rvc_model = gr.Dropdown(
+                    get_folders(RVC_MODELS_DIR), label="Модели голоса"
+                )
                 ref_btn = gr.Button("Обновить список моделей", variant="primary")
             with gr.Group():
                 pitch = gr.Slider(
