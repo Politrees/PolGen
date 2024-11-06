@@ -1,133 +1,124 @@
+import os
+import gc
 import torch
-from multiprocessing import cpu_count
 from fairseq import checkpoint_utils
 from scipy.io import wavfile
 
 from rvc.lib.algorithm.synthesizers import Synthesizer
 from rvc.lib.my_utils import load_audio
-from .pipeline import VC
+from rvc.infer.config import Config
+from rvc.infer.pipeline import VC
+
+# Инициализация конфигурации
+config = Config()
+
+# Определение путей к директориям с моделями
+RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
+HUBERT_PATH = os.path.join(os.getcwd(), "rvc", "models", "embedders", "hubert_base.pt")
 
 
-# Конфигурация устройства и параметров
-class Config:
-    def __init__(self):
-        self.device = self.get_device()
-        self.is_half = self.device == "cpu"
-        self.n_cpu = cpu_count()
-        self.gpu_name = None
-        self.gpu_mem = None
-        self.x_pad, self.x_query, self.x_center, self.x_max = self.device_config()
+# Загружает модель RVC и индекс по имени модели.
+def load_rvc_model(rvc_model):
+    # Формируем путь к директории модели
+    model_dir = os.path.join(RVC_MODELS_DIR, rvc_model)
+    # Получаем список файлов в директории модели
+    model_files = os.listdir(model_dir)
+    
+    # Находим файл модели с расширением .pth
+    rvc_model_path = next(
+        (os.path.join(model_dir, f) for f in model_files if f.endswith(".pth")), None
+    )
+    # Находим файл индекса с расширением .index
+    rvc_index_path = next(
+        (os.path.join(model_dir, f) for f in model_files if f.endswith(".index")), None
+    )
 
-    def get_device(self):
-        if torch.cuda.is_available():
-            return "cuda"
-        elif torch.backends.mps.is_available():
-            return "mps"
-        else:
-            return "cpu"
-
-    def device_config(self):
-        if torch.cuda.is_available():
-            print("Используется устройство CUDA")
-            self._configure_gpu()
-        elif torch.backends.mps.is_available():
-            print("Используется устройство MPS")
-            self.device = "mps"
-        else:
-            print("Используется CPU")
-            self.device = "cpu"
-            self.is_half = True
-
-        x_pad, x_query, x_center, x_max = (
-            (3, 10, 60, 65) if self.is_half else (1, 6, 38, 41)
-        )
-        if self.gpu_mem is not None and self.gpu_mem <= 4:
-            x_pad, x_query, x_center, x_max = (1, 5, 30, 32)
-
-        return x_pad, x_query, x_center, x_max
-
-    def _configure_gpu(self):
-        self.gpu_name = torch.cuda.get_device_name(self.device)
-        low_end_gpus = ["16", "P40", "P10", "1060", "1070", "1080"]
-        if (
-            any(gpu in self.gpu_name for gpu in low_end_gpus)
-            and "V100" not in self.gpu_name.upper()
-        ):
-            self.is_half = False
-        self.gpu_mem = int(
-            torch.cuda.get_device_properties(self.device).total_memory
-            / 1024
-            / 1024
-            / 1024
-            + 0.4
+    # Проверяем, существует ли файл модели
+    if not rvc_model_path:
+        raise ValueError(
+            f"Модель {rvc_model} не существует. Возможно, вы ввели имя неправильно."
         )
 
+    return rvc_model_path, rvc_index_path
 
-# Загрузка модели Hubert
-def load_hubert(device, is_half, model_path):
+
+# Загружает модель Hubert
+def load_hubert(model_path):
+    # Загружаем модель Hubert и её конфигурацию
     models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task(
         [model_path], suffix=""
     )
-    hubert = models[0].to(device)
-    hubert = hubert.half() if is_half else hubert.float()
+    # Перемещаем модель на устройство (GPU или CPU)
+    hubert = models[0].to(config.device)
+    # Преобразуем модель в полуточность (half) или полную точность (float)
+    hubert = hubert.half() if config.is_half else hubert.float()
+    # Устанавливаем модель в режим оценки (инференс)
     hubert.eval()
     return hubert
 
 
-# Получение голосового преобразователя
-def get_vc(device, is_half, config, model_path):
+# Получает конвертер голоса
+def get_vc(model_path):
+    # Загружаем состояние модели из файла
     cpt = torch.load(model_path, map_location="cpu", weights_only=True)
+    
+    # Проверяем корректность формата модели
     if "config" not in cpt or "weight" not in cpt:
         raise ValueError(
-            f"Некорректный формат для {model_path}. "
-            "Используйте голосовую модель, обученную с использованием RVC v2."
+            f"Некорректный формат для {model_path}. Используйте голосовую модель, обученную с RVC v2."
         )
 
+    # Извлекаем параметры модели
     tgt_sr = cpt["config"][-1]
     cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]
     pitch_guidance = cpt.get("f0", 1)
     version = cpt.get("version", "v1")
     input_dim = 768 if version == "v2" else 256
 
+    # Инициализируем синтезатор
     net_g = Synthesizer(
         *cpt["config"],
         use_f0=pitch_guidance,
         input_dim=input_dim,
-        is_half=is_half,
+        is_half=config.is_half,
     )
 
+    # Удаляем ненужный слой
     del net_g.enc_q
     print(net_g.load_state_dict(cpt["weight"], strict=False))
-    net_g.eval().to(device)
-    net_g = net_g.half() if is_half else net_g.float()
+    # Устанавливаем модель в режим оценки и перемещаем на устройство
+    net_g.eval().to(config.device)
+    net_g = net_g.half() if config.is_half else net_g.float()
 
+    # Инициализируем объект конвертера голоса
     vc = VC(tgt_sr, config)
     return cpt, version, net_g, tgt_sr, vc
 
 
-# Выполнение инференса с использованием RVC
+# Выполняет инференс с использованием RVC
 def rvc_infer(
-    index_path,
-    index_rate,
+    voice_model,
     input_path,
     output_path,
+    index_rate,
     pitch,
     f0_method,
-    cpt,
-    version,
-    net_g,
     filter_radius,
-    tgt_sr,
     volume_envelope,
     protect,
     hop_length,
-    vc,
-    hubert_model,
-    f0_min=50,
-    f0_max=1100,
+    f0_min,
+    f0_max,
 ):
+    # Загружаем модель Hubert
+    hubert_model = load_hubert(HUBERT_PATH)
+    # Загружаем модель RVC и индекс
+    model_path, index_path = load_rvc_model(voice_model)
+    # Получаем конвертер голоса
+    cpt, version, net_g, tgt_sr, vc = get_vc(model_path)
+    # Загружаем аудиофайл
     audio = load_audio(input_path, 16000)
-    pitch_guidance = cpt.get("f0", 1)
+    # Выполняем конвертацию голоса
     audio_opt = vc.pipeline(
         hubert_model,
         net_g,
@@ -138,15 +129,19 @@ def rvc_infer(
         f0_method,
         index_path,
         index_rate,
-        pitch_guidance,
         filter_radius,
         tgt_sr,
         volume_envelope,
         version,
         protect,
         hop_length,
+        f0_min,
+        f0_max,
         f0_file=None,
-        f0_min=f0_min,
-        f0_max=f0_max,
     )
+    # Сохраняем результат в файл
     wavfile.write(output_path, tgt_sr, audio_opt)
+    # Освобождаем память
+    del hubert_model, cpt, net_g, vc
+    gc.collect()
+    torch.cuda.empty_cache()

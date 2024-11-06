@@ -1,12 +1,16 @@
 import os
+import librosa
+import asyncio
+import edge_tts
+import numpy as np
 import gradio as gr
+import soundfile as sf
 
-from rvc.scripts.edge_tts_conversion import edge_tts_pipeline
-from rvc.modules.model_manager import get_folders, update_models_list
-from rvc.modules.ui_updates import show_hop_slider
+from rvc.infer.infer import rvc_infer
 
-rvc_models_dir = os.path.join(os.getcwd(), "models")
-voice_models = get_folders(rvc_models_dir)
+
+RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
+OUTPUT_DIR = os.path.join(os.getcwd(), "output", "converted_audio")
 
 
 edge_voices = {
@@ -52,11 +56,104 @@ def update_edge_voices(selected_language):
     return gr.update(choices=edge_voices[selected_language])
 
 
+# Синтезирует текст в речь с использованием edge_tts.
+async def text_to_speech(text, voice, output_path):
+    communicate = edge_tts.Communicate(text=text, voice=voice)
+    await communicate.save(output_path)
+
+
+# Конвертирует аудиофайл в стерео формат.
+def convert_to_stereo(input_path, output_path):
+    y, sr = librosa.load(input_path, sr=None, mono=False)
+    if y.ndim == 1:
+        y = np.vstack([y, y])
+    elif y.ndim > 2:
+        y = y[:2, :]
+    sf.write(output_path, y.T, sr, format="WAV")
+
+
+# Основной конвейер для синтеза речи и преобразования голоса.
+def edge_tts_pipeline(
+    text,
+    voice_model,
+    voice,
+    pitch,
+    index_rate=0.5,
+    filter_radius=3,
+    volume_envelope=0.25,
+    f0_method="rmvpe+",
+    hop_length=128,
+    protect=0.33,
+    output_format="mp3",
+    f0_min=50,
+    f0_max=1100,
+    progress=gr.Progress(track_tqdm=True),
+):
+    if not text:
+        raise ValueError("Введите необходимый текст в поле для ввода.")
+    if not voice:
+        raise ValueError("Выберите язык и голос для синтеза речи.")
+    if not voice_model:
+        raise ValueError("Выберите модель голоса для преобразования.")
+
+    progress(0, "Запуск конвейера генерации...")
+    tts_voice_path = os.path.join(OUTPUT_DIR, "TTS_Voice.wav")
+    tts_voice_convert_path = os.path.join(
+        OUTPUT_DIR, f"TTS_Voice_Converted.{output_format}"
+    )
+
+    progress(0.25, "Синтез речи...")
+    asyncio.run(text_to_speech(text, voice, tts_voice_path))
+
+    progress(0.5, "Преобразование речи...")
+    rvc_infer(
+        voice_model,
+        tts_voice_path,
+        tts_voice_convert_path,
+        index_rate,
+        pitch,
+        f0_method,
+        filter_radius,
+        volume_envelope,
+        protect,
+        hop_length,
+        f0_min,
+        f0_max,
+    )
+
+    progress(0.75, f"Конвертация речи в стерео формат...")
+    convert_to_stereo(tts_voice_convert_path, tts_voice_convert_path)
+
+    return tts_voice_convert_path, tts_voice_path
+
+
+# Возвращает список папок, находящихся в директории моделей
+def get_folders(models_dir):
+    return [
+        item
+        for item in os.listdir(models_dir)
+        if os.path.isdir(os.path.join(models_dir, item))
+    ]
+
+
+# Обновляет список моделей для отображения в интерфейсе Gradio
+def update_models_list():
+    models_folders = get_folders(RVC_MODELS_DIR)
+    return gr.update(choices=models_folders)
+
+
+def show_hop_slider(pitch_detection_algo):
+    if pitch_detection_algo in ["mangio-crepe"]:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+
 def edge_tts_tab():
     with gr.Row(equal_height=False):
         with gr.Column(variant="panel", scale=2):
             with gr.Group():
-                rvc_model = gr.Dropdown(voice_models, label="Модели голоса")
+                rvc_model = gr.Dropdown(get_folders(RVC_MODELS_DIR), label="Модели голоса")
                 ref_btn = gr.Button("Обновить список моделей", variant="primary")
             with gr.Group():
                 pitch = gr.Slider(
@@ -80,15 +177,13 @@ def edge_tts_tab():
     text_input = gr.Textbox(label="Введите текст", lines=5)
 
     with gr.Group():
-        with gr.Row():
+        with gr.Row(equal_height=True):
             generate_btn = gr.Button("Генерировать", variant="primary", scale=2)
             converted_tts_voice = gr.Audio(label="Преобразованный голос", scale=9)
             output_format = gr.Dropdown(
                 ["wav", "flac", "mp3"],
                 value="mp3",
                 label="Формат файла",
-                allow_custom_value=False,
-                filterable=False,
                 scale=1,
             )
 

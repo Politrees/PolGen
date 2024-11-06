@@ -1,25 +1,123 @@
 import os
+import librosa
+import numpy as np
 import gradio as gr
+import soundfile as sf
 
-from rvc.scripts.voice_conversion import voice_pipeline
-from rvc.modules.model_manager import get_folders, update_models_list
-from rvc.modules.ui_updates import (
-    process_file_upload,
-    show_hop_slider,
-    update_button_text,
-    swap_visibility,
-    swap_buttons,
-)
-
-rvc_models_dir = os.path.join(os.getcwd(), "models")
-voice_models = get_folders(rvc_models_dir)
+from rvc.infer.infer import rvc_infer
 
 
-def conversion_tab():
+RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
+OUTPUT_DIR = os.path.join(os.getcwd(), "output", "converted_audio")
+
+
+# Конвертирует аудиофайл в стерео формат.
+def convert_to_stereo(input_path, output_path):
+    y, sr = librosa.load(input_path, sr=None, mono=False)
+    if y.ndim == 1:
+        y = np.vstack([y, y])
+    elif y.ndim > 2:
+        y = y[:2, :]
+    sf.write(output_path, y.T, sr, format="WAV")
+
+
+# Основной конвейер для преобразования голоса.
+def voice_pipeline(
+    uploaded_file,
+    voice_model,
+    pitch,
+    index_rate=0.5,
+    filter_radius=3,
+    volume_envelope=0.25,
+    f0_method="rmvpe+",
+    hop_length=128,
+    protect=0.33,
+    output_format="mp3",
+    f0_min=50,
+    f0_max=1100,
+    progress=gr.Progress(track_tqdm=True),
+):
+    if not uploaded_file:
+        raise ValueError("Не удалось найти аудиофайл. Убедитесь, что файл загрузился или проверьте правильность пути к нему.")
+    if not voice_model:
+        raise ValueError("Выберите модель голоса для преобразования.")
+    if not os.path.exists(uploaded_file):
+        raise ValueError(f"Файл {uploaded_file} не найден.")
+
+    progress(0, "Запуск конвейера генерации...")
+    voice_convert_path = os.path.join(OUTPUT_DIR, f"Voice_Converted.{output_format}")
+
+    progress(0.4, "Преобразование голоса...")
+    rvc_infer(
+        voice_model,
+        uploaded_file,
+        voice_convert_path,
+        index_rate,
+        pitch,
+        f0_method,
+        filter_radius,
+        volume_envelope,
+        protect,
+        hop_length,
+        f0_min,
+        f0_max,
+    )
+
+    progress(0.8, f"Конвертация голоса в стерео формат...")
+    convert_to_stereo(voice_convert_path, voice_convert_path)
+
+    return voice_convert_path
+
+
+# Возвращает список папок, находящихся в директории моделей
+def get_folders(models_dir):
+    return [
+        item
+        for item in os.listdir(models_dir)
+        if os.path.isdir(os.path.join(models_dir, item))
+    ]
+
+
+# Обновляет список моделей для отображения в интерфейсе Gradio
+def update_models_list():
+    models_folders = get_folders(RVC_MODELS_DIR)
+    return gr.update(choices=models_folders)
+
+
+def process_file_upload(file):
+    return file.name, gr.update(value=file.name)
+
+
+def show_hop_slider(pitch_detection_algo):
+    if pitch_detection_algo in ["mangio-crepe"]:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+
+def update_button_text():
+    return gr.update(label="Загрузить другой аудио-файл")
+
+
+def swap_visibility():
+    return (
+        gr.update(visible=True),
+        gr.update(visible=False),
+        gr.update(value=""),
+        gr.update(value=None),
+    )
+
+
+def swap_buttons():
+    return gr.update(visible=False), gr.update(visible=True)
+
+
+# Вкладка "Преобразование голоса" для интерфейса
+def inference_tab():
     with gr.Row(equal_height=False):
         with gr.Column(scale=1, variant="panel"):
             with gr.Group():
-                rvc_model = gr.Dropdown(voice_models, label="Голосовые модели:")
+                rvc_model = gr.Dropdown(get_folders(RVC_MODELS_DIR), label="Голосовые модели:")
                 ref_btn = gr.Button("Обновить список моделей", variant="primary")
             with gr.Group():
                 pitch = gr.Slider(
@@ -59,15 +157,13 @@ def conversion_tab():
                 show_enter_button = gr.Button("Ввод пути к локальному файлу")
 
     with gr.Group():
-        with gr.Row():
+        with gr.Row(equal_height=True):
             generate_btn = gr.Button("Генерировать", variant="primary", scale=2)
             converted_voice = gr.Audio(label="Преобразованный голос", scale=9)
             output_format = gr.Dropdown(
                 ["wav", "flac", "mp3"],
                 value="mp3",
                 label="Формат файла",
-                allow_custom_value=False,
-                filterable=False,
                 scale=1,
             )
 

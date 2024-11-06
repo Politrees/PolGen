@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from rvc.scripts.edge_tts_conversion import edge_tts_pipeline
+from tabs.inference import edge_tts_pipeline
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")
 

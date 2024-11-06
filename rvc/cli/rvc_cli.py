@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from rvc.scripts.voice_conversion import voice_pipeline
+from tabs.inference import voice_pipeline
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")
 

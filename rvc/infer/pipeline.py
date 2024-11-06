@@ -1,22 +1,23 @@
 import os
 import gc
 import torch
-import torch.nn.functional as F
-import torchcrepe
 import faiss
 import librosa
+import torchcrepe
 import numpy as np
+import torch.nn.functional as F
 from scipy import signal
 from torch import Tensor
 
 from rvc.lib.predictors.FCPE import FCPEF0Predictor
 from rvc.lib.predictors.RMVPE import RMVPE0Predictor
 
+# Определение путей к директориям с предикторами
 PREDICTORS_DIR = os.path.join(os.getcwd(), "rvc", "models", "predictors")
 RMVPE_DIR = os.path.join(PREDICTORS_DIR, "rmvpe.pt")
 FCPE_DIR = os.path.join(PREDICTORS_DIR, "fcpe.pt")
 
-# Фильтр Баттерворта для высоких частот
+# Настройки фильтра Баттерворта высоких частот
 FILTER_ORDER = 5  # Порядок фильтра
 CUTOFF_FREQUENCY = 48  # Частота среза (в Гц)
 SAMPLE_RATE = 16000  # Частота дискретизации (в Гц)
@@ -36,7 +37,7 @@ class AudioProcessor:
         rate: float,
     ) -> np.ndarray:
         """
-        Изменяет RMS (среднеквадратичное значение) аудио.
+        Изменяет среднеквадратичное значение (RMS) аудио.
         """
         rms1 = librosa.feature.rms(
             y=source_audio,
@@ -68,11 +69,11 @@ class AudioProcessor:
         return adjusted_audio
 
 
-# Класс для преобразования голоса
+# Класс для конвертации голоса
 class VC:
     def __init__(self, tgt_sr, config):
         """
-        Инициализация параметров для преобразования голоса.
+        Инициализирует параметры для конвертации голоса.
         """
         self.x_pad = config.x_pad
         self.x_query = config.x_query
@@ -227,7 +228,7 @@ class VC:
         protect,
     ):
         """
-        Преобразует аудио с использованием модели.
+        Конвертирует аудио с использованием модели.
         """
         feats = torch.from_numpy(audio0)
         feats = feats.half() if self.is_half else feats.float()
@@ -309,19 +310,18 @@ class VC:
         f0_method,
         file_index,
         index_rate,
-        pitch_guidance,
         filter_radius,
         tgt_sr,
         volume_envelope,
         version,
         protect,
         hop_length,
+        f0_min,
+        f0_max,
         f0_file,
-        f0_min=50,
-        f0_max=1100,
     ):
         """
-        Основной конвейер для преобразования аудио.
+        Основной пайплайн для конвертации аудио.
         """
         if (
             file_index is not None
@@ -333,7 +333,7 @@ class VC:
                 index = faiss.read_index(file_index)
                 big_npy = index.reconstruct_n(0, index.ntotal)
             except Exception as e:
-                print(f"Произошла ошибка при чтении индекса FAISS: {e}")
+                print(f"Ошибка чтения индекса FAISS: {e}")
                 index = big_npy = None
         else:
             index = big_npy = None
@@ -368,94 +368,59 @@ class VC:
                     inp_f0.append([float(i) for i in line.split(",")])
                 inp_f0 = np.array(inp_f0, dtype="float32")
             except Exception as e:
-                print(f"Произошла ошибка при чтении файла F0: {e}")
+                print(f"Ошибка чтения файла F0: {e}")
         sid = torch.tensor(sid, device=self.device).unsqueeze(0).long()
-        if pitch_guidance:
-            pitch, pitchf = self.get_f0(
-                input_audio_path,
-                audio_pad,
-                p_len,
-                pitch,
-                f0_method,
-                filter_radius,
-                hop_length,
-                inp_f0,
-                f0_min,
-                f0_max,
-            )
-            pitch = pitch[:p_len]
-            pitchf = pitchf[:p_len]
-            if self.device == "mps":
-                pitchf = pitchf.astype(np.float32)
-            pitch = torch.tensor(pitch, device=self.device).unsqueeze(0).long()
-            pitchf = torch.tensor(pitchf, device=self.device).unsqueeze(0).float()
+        pitch, pitchf = self.get_f0(
+            input_audio_path,
+            audio_pad,
+            p_len,
+            pitch,
+            f0_method,
+            filter_radius,
+            hop_length,
+            inp_f0,
+            f0_min,
+            f0_max,
+        )
+        pitch = pitch[:p_len]
+        pitchf = pitchf[:p_len]
+        if self.device == "mps":
+            pitchf = pitchf.astype(np.float32)
+        pitch = torch.tensor(pitch, device=self.device).unsqueeze(0).long()
+        pitchf = torch.tensor(pitchf, device=self.device).unsqueeze(0).float()
         for t in opt_ts:
             t = t // self.window * self.window
-            if pitch_guidance:
-                audio_opt.append(
-                    self.vc(
-                        model,
-                        net_g,
-                        sid,
-                        audio_pad[s : t + self.t_pad2 + self.window],
-                        pitch[:, s // self.window : (t + self.t_pad2) // self.window],
-                        pitchf[:, s // self.window : (t + self.t_pad2) // self.window],
-                        index,
-                        big_npy,
-                        index_rate,
-                        version,
-                        protect,
-                    )[self.t_pad_tgt : -self.t_pad_tgt]
-                )
-            else:
-                audio_opt.append(
-                    self.vc(
-                        model,
-                        net_g,
-                        sid,
-                        audio_pad[s : t + self.t_pad2 + self.window],
-                        None,
-                        None,
-                        index,
-                        big_npy,
-                        index_rate,
-                        version,
-                        protect,
-                    )[self.t_pad_tgt : -self.t_pad_tgt]
-                )
+            audio_opt.append(
+                self.vc(
+                    model,
+                    net_g,
+                    sid,
+                    audio_pad[s : t + self.t_pad2 + self.window],
+                    pitch[:, s // self.window : (t + self.t_pad2) // self.window],
+                    pitchf[:, s // self.window : (t + self.t_pad2) // self.window],
+                    index,
+                    big_npy,
+                    index_rate,
+                    version,
+                    protect,
+                )[self.t_pad_tgt : -self.t_pad_tgt]
+            )
             s = t
-        if pitch_guidance:
-            audio_opt.append(
-                self.vc(
-                    model,
-                    net_g,
-                    sid,
-                    audio_pad[t:],
-                    pitch[:, t // self.window :] if t is not None else pitch,
-                    pitchf[:, t // self.window :] if t is not None else pitchf,
-                    index,
-                    big_npy,
-                    index_rate,
-                    version,
-                    protect,
-                )[self.t_pad_tgt : -self.t_pad_tgt]
-            )
-        else:
-            audio_opt.append(
-                self.vc(
-                    model,
-                    net_g,
-                    sid,
-                    audio_pad[t:],
-                    None,
-                    None,
-                    index,
-                    big_npy,
-                    index_rate,
-                    version,
-                    protect,
-                )[self.t_pad_tgt : -self.t_pad_tgt]
-            )
+        audio_opt.append(
+            self.vc(
+                model,
+                net_g,
+                sid,
+                audio_pad[t:],
+                pitch[:, t // self.window :] if t is not None else pitch,
+                pitchf[:, t // self.window :] if t is not None else pitchf,
+                index,
+                big_npy,
+                index_rate,
+                version,
+                protect,
+            )[self.t_pad_tgt : -self.t_pad_tgt]
+        )
 
         audio_opt = np.concatenate(audio_opt)
         if volume_envelope != 1:
