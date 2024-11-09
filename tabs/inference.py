@@ -310,12 +310,8 @@ def inference_tab():
     f0_method.change(show_hop_slider, inputs=f0_method, outputs=hop_length)
 
     # Переключение equal_height
-    show_upload_button.click(
-        lambda: gr.update(equal_height=True), outputs=[align]
-    )
-    show_enter_button.click(
-        lambda: gr.update(equal_height=False), outputs=[align]
-    )
+    show_upload_button.click(lambda: gr.update(equal_height=True), outputs=[align])
+    show_enter_button.click(lambda: gr.update(equal_height=False), outputs=[align])
 
     # Обновление списка моделей
     ref_btn.click(update_models_list, None, outputs=rvc_model)
