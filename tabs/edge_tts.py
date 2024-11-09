@@ -1,10 +1,7 @@
 import os
-import librosa
 import asyncio
 import edge_tts
-import numpy as np
 import gradio as gr
-import soundfile as sf
 
 from rvc.infer.infer import rvc_infer
 
