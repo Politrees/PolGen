@@ -66,7 +66,7 @@ class Generator(nn.Module):
             x = self.ups[i](x)
             xs = None
             for j in range(self.num_kernels):
-                if xs == None:
+                if xs is None:
                     xs = self.resblocks[i * self.num_kernels + j](x)
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)

@@ -17,7 +17,7 @@ class I18nAuto:
 
         self.language = lang_prefix
 
-        if override == False:
+        if not override:
             language = language or getdefaultlocale()[0]
             lang_prefix = language[:2] if language is not None else "en"
             available_languages = self._get_available_languages()
