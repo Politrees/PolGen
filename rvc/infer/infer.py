@@ -3,8 +3,8 @@ import gc
 import torch
 import librosa
 import numpy as np
-import soundfile as sf
 from fairseq import checkpoint_utils
+from pydub import AudioSegment
 from scipy.io import wavfile
 
 from rvc.lib.algorithm.synthesizers import Synthesizer
@@ -105,7 +105,17 @@ def convert_to_stereo(input_path, output_path, output_format):
         y = np.vstack([y, y])
     elif y.ndim > 2:
         y = y[:2, :]
-    sf.write(output_path, y.T, sr, format=output_format)
+    
+    # Конвертируем numpy массив в AudioSegment
+    audio_segment = AudioSegment(
+        y.tobytes(), 
+        frame_rate=sr,
+        sample_width=y.dtype.itemsize, 
+        channels=2
+    )
+    
+    # Экспортируем в нужный формат
+    audio_segment.export(output_path, format=output_format)
 
 
 # Выполняет инференс с использованием RVC
