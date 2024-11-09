@@ -40,9 +40,9 @@ jobs:
       run: |
         python3 -m tabs.install "https://huggingface.co/Politrees/Victor_Tsoi/resolve/main/Victor_Tsoi.zip?download=true" "test2"
 
-    - name: Pixeldrain
-      run: |
-        python3 -m tabs.install "https://pixeldrain.com/u/mN7BsdZb" "test3"
+    #- name: Pixeldrain
+    #  run: |
+    #    python3 -m tabs.install "https://pixeldrain.com/u/mN7BsdZb" "test3"
 
     - name: Mega
       run: |
