@@ -111,7 +111,7 @@ def swap_buttons():
 
 # Вкладка "Преобразование голоса" для интерфейса
 def inference_tab():
-    with gr.Row(equal_height=True) as align:
+    with gr.Row():
         with gr.Column(scale=1):
             with gr.Column(variant="panel"):
                 with gr.Group():
@@ -129,7 +129,7 @@ def inference_tab():
                         interactive=True,
                         visible=True,
                     )
-                with gr.Group():
+                with gr.Column():
                     pitch = gr.Slider(
                         minimum=-24,
                         maximum=24,
@@ -140,7 +140,7 @@ def inference_tab():
                         interactive=True,
                         visible=True,
                     )
-                with gr.Group():
+                with gr.Column():
                     output_format = gr.Dropdown(
                         value="mp3",
                         label="Формат файла",
@@ -308,14 +308,6 @@ def inference_tab():
 
     # Показать hop_length
     f0_method.change(show_hop_slider, inputs=f0_method, outputs=hop_length)
-
-    # Переключение equal_height
-    show_upload_button.click(
-        lambda: gr.update(equal_height=True), outputs=[align]
-    )
-    show_enter_button.click(
-        lambda: gr.update(equal_height=False), outputs=[align]
-    )
 
     # Обновление списка моделей
     ref_btn.click(update_models_list, None, outputs=rvc_model)
