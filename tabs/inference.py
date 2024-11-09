@@ -47,7 +47,8 @@ def voice_pipeline(
         raise ValueError(f"Файл {uploaded_file} не найден.")
 
     progress(0, "Запуск конвейера генерации...")
-    voice_convert_path = os.path.join(OUTPUT_DIR, f"Voice_Converted.{output_format}")
+    base_name = os.path.splitext(os.path.basename(uploaded_file))[0]
+    voice_convert_path = os.path.join(OUTPUT_DIR, f"{base_name}_(Converted).{output_format}")
 
     progress(0.4, "Преобразование голоса...")
     rvc_infer(

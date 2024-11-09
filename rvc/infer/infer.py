@@ -145,3 +145,65 @@ def rvc_infer(
     del hubert_model, cpt, net_g, vc
     gc.collect()
     torch.cuda.empty_cache()
+
+
+# Выполняет пакетное преобразование файлов с использованием rvc_infer
+def rvc_infer_batch(
+    voice_model,
+    input_dir,
+    output_dir,
+    index_rate,
+    pitch,
+    f0_method,
+    filter_radius,
+    volume_envelope,
+    protect,
+    hop_length,
+    f0_min,
+    f0_max,
+):
+    # Получаем список файлов в директории input_dir
+    input_files = [
+        f
+        for f in os.listdir(input_dir)
+        if f.endswith(
+            (
+                "wav",
+                "mp3",
+                "flac",
+                "ogg",
+                "opus",
+                "m4a",
+                "mp4",
+                "aac",
+                "alac",
+                "wma",
+                "aiff",
+                "webm",
+                "ac3",
+            )
+        )
+    ]
+
+    for input_file in input_files:
+        # Формируем пути к входному и выходному файлам
+        input_path = os.path.join(input_dir, input_file)
+        output_path = os.path.join(output_dir, input_file)
+
+        print(f"Преобразование {input_file}...")
+
+        # Выполняем преобразование для текущего файла
+        rvc_infer(
+            voice_model,
+            input_path,
+            output_path,
+            index_rate,
+            pitch,
+            f0_method,
+            filter_radius,
+            volume_envelope,
+            protect,
+            hop_length,
+            f0_min,
+            f0_max,
+        
