@@ -11,16 +11,6 @@ RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
 OUTPUT_DIR = os.path.join(os.getcwd(), "output", "converted_audio")
 
 
-# Конвертирует аудиофайл в стерео формат.
-def convert_to_stereo(input_path, output_path):
-    y, sr = librosa.load(input_path, sr=None, mono=False)
-    if y.ndim == 1:
-        y = np.vstack([y, y])
-    elif y.ndim > 2:
-        y = y[:2, :]
-    sf.write(output_path, y.T, sr, format="WAV")
-
-
 # Основной конвейер для преобразования голоса.
 def voice_pipeline(
     uploaded_file,
@@ -50,7 +40,7 @@ def voice_pipeline(
     base_name = os.path.splitext(os.path.basename(uploaded_file))[0]
     voice_convert_path = os.path.join(OUTPUT_DIR, f"{base_name}_(Converted).{output_format}")
 
-    progress(0.4, "Преобразование голоса...")
+    progress(0.5, "Преобразование голоса...")
     rvc_infer(
         voice_model,
         uploaded_file,
@@ -64,10 +54,8 @@ def voice_pipeline(
         hop_length,
         f0_min,
         f0_max,
+        output_format,
     )
-
-    progress(0.8, "Конвертация голоса в стерео формат...")
-    convert_to_stereo(voice_convert_path, voice_convert_path)
 
     return voice_convert_path
 

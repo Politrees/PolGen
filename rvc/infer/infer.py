@@ -1,6 +1,9 @@
 import os
 import gc
 import torch
+import librosa
+import numpy as np
+import soundfile as sf
 from fairseq import checkpoint_utils
 from scipy.io import wavfile
 
@@ -95,6 +98,16 @@ def get_vc(model_path):
     return cpt, version, net_g, tgt_sr, vc
 
 
+# Конвертирует аудиофайл в стерео формат.
+def convert_to_stereo(input_path, output_path, output_format):
+    y, sr = librosa.load(input_path, sr=None, mono=False)
+    if y.ndim == 1:
+        y = np.vstack([y, y])
+    elif y.ndim > 2:
+        y = y[:2, :]
+    sf.write(output_path, y.T, sr, format=output_format)
+
+
 # Выполняет инференс с использованием RVC
 def rvc_infer(
     voice_model,
@@ -109,6 +122,7 @@ def rvc_infer(
     hop_length,
     f0_min,
     f0_max,
+    output_format,
 ):
     # Загружаем модель Hubert
     hubert_model = load_hubert(HUBERT_PATH)
@@ -141,6 +155,10 @@ def rvc_infer(
     )
     # Сохраняем результат в файл
     wavfile.write(output_path, tgt_sr, audio_opt)
+
+    # Конвертируем файл в стерео формат
+    convert_to_stereo(output_path, output_path, output_format)
+
     # Освобождаем память
     del hubert_model, cpt, net_g, vc
     gc.collect()
@@ -161,6 +179,7 @@ def rvc_infer_batch(
     hop_length,
     f0_min,
     f0_max,
+    output_format,
 ):
     # Получаем список файлов в директории input_dir
     input_files = [
@@ -206,4 +225,5 @@ def rvc_infer_batch(
             hop_length,
             f0_min,
             f0_max,
-        
+            output_format,
+        )
