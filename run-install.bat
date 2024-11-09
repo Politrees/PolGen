@@ -23,7 +23,7 @@ pause
 exit /b 0
 
 :install_miniconda
-if exist "%CONDA_EXE%" (
+if exist "%MINICONDA_DIR%" (
     echo Miniconda already installed. Skipping installation.
     exit /b 0
 )

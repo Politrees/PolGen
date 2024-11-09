@@ -82,12 +82,11 @@ def get_folders(models_dir):
 
 # Обновляет список моделей для отображения в интерфейсе Gradio
 def update_models_list():
-    models_folders = get_folders(RVC_MODELS_DIR)
-    return gr.update(choices=models_folders)
+    return gr.update(choices=get_folders(RVC_MODELS_DIR))
 
 
 def process_file_upload(file):
-    return file.name, gr.update(value=file.name)
+    return file, gr.update(value=file)
 
 
 def show_hop_slider(pitch_detection_algo):
@@ -95,10 +94,6 @@ def show_hop_slider(pitch_detection_algo):
         return gr.update(visible=True)
     else:
         return gr.update(visible=False)
-
-
-def update_button_text():
-    return gr.update(label="Загрузить другой аудио-файл")
 
 
 def swap_visibility():
@@ -116,59 +111,91 @@ def swap_buttons():
 
 # Вкладка "Преобразование голоса" для интерфейса
 def inference_tab():
-    with gr.Row(equal_height=False):
-        with gr.Column(scale=1, variant="panel"):
-            with gr.Group():
-                rvc_model = gr.Dropdown(
-                    get_folders(RVC_MODELS_DIR), label="Голосовые модели:"
-                )
-                ref_btn = gr.Button("Обновить список моделей", variant="primary")
-            with gr.Group():
-                pitch = gr.Slider(
-                    value=0,
-                    step=1,
-                    minimum=-24,
-                    maximum=24,
-                    label="Регулировка тона",
-                    info="-24 - мужской голос || 24 - женский голос",
-                )
+    with gr.Row(equal_height=True) as align:
+        with gr.Column(scale=1):
+            with gr.Column(variant="panel"):
+                with gr.Group():
+                    rvc_model = gr.Dropdown(
+                        label="Голосовые модели:",
+                        choices=get_folders(RVC_MODELS_DIR),
+                        allow_custom_value=False,
+                        filterable=False,
+                        interactive=True,
+                        visible=True,
+                    )
+                    ref_btn = gr.Button(
+                        value="Обновить список моделей",
+                        variant="primary",
+                        interactive=True,
+                        visible=True,
+                    )
+                with gr.Group():
+                    pitch = gr.Slider(
+                        minimum=-24,
+                        maximum=24,
+                        step=1,
+                        value=0,
+                        label="Регулировка тона",
+                        info="-24 - мужской голос || 24 - женский голос",
+                        interactive=True,
+                        visible=True,
+                    )
+                with gr.Group():
+                    output_format = gr.Dropdown(
+                        value="mp3",
+                        label="Формат файла",
+                        choices=["wav", "flac", "mp3"],
+                        allow_custom_value=False,
+                        filterable=False,
+                        interactive=True,
+                        visible=True,
+                    )
 
         with gr.Column(scale=2, variant="panel"):
             with gr.Column() as upload_file:
-                with gr.Group():
-                    local_file = gr.Audio(
-                        label="Аудио",
-                        interactive=False,
-                        show_download_button=False,
-                        show_share_button=False,
-                    )
-                    uploaded_file = gr.UploadButton(
-                        label="Загрузить аудио-файл",
-                        file_types=["audio"],
-                        variant="primary",
-                    )
+                local_file = gr.Audio(
+                    label="Аудио",
+                    type="filepath",
+                    show_download_button=False,
+                    show_share_button=False,
+                    interactive=True,
+                    visible=True,
+                )
 
             with gr.Column(visible=False) as enter_local_file:
                 song_input = gr.Text(
                     label="Путь к локальному файлу:",
                     info="Введите полный путь к локальному файлу.",
+                    interactive=True,
+                    visible=True,
                 )
 
             with gr.Column():
                 show_upload_button = gr.Button(
-                    "Загрузка файла с устройства", visible=False
+                    value="Загрузить файл с устройства",
+                    interactive=True,
+                    visible=False,
                 )
-                show_enter_button = gr.Button("Ввод пути к локальному файлу")
+                show_enter_button = gr.Button(
+                    value="Ввести путь к локальному файлу",
+                    interactive=True,
+                    visible=True,
+                )
 
     with gr.Group():
         with gr.Row(equal_height=True):
-            generate_btn = gr.Button("Генерировать", variant="primary", scale=2)
-            converted_voice = gr.Audio(label="Преобразованный голос", scale=9)
-            output_format = gr.Dropdown(
-                ["wav", "flac", "mp3"],
-                value="mp3",
-                label="Формат файла",
-                scale=1,
+            generate_btn = gr.Button(
+                value="Генерировать",
+                variant="primary",
+                interactive=True,
+                visible=True,
+                scale=2,
+            )
+            converted_voice = gr.Audio(
+                label="Преобразованный голос",
+                interactive=False,
+                visible=True,
+                scale=9,
             )
 
     with gr.Accordion("Настройки преобразования", open=False):
@@ -177,81 +204,95 @@ def inference_tab():
                 with gr.Group():
                     with gr.Column():
                         f0_method = gr.Dropdown(
-                            ["rmvpe+", "fcpe", "mangio-crepe"],
                             value="rmvpe+",
                             label="Метод выделения тона",
+                            choices=["rmvpe+", "fcpe", "mangio-crepe"],
                             allow_custom_value=False,
                             filterable=False,
+                            interactive=True,
+                            visible=True,
                         )
                         hop_length = gr.Slider(
-                            value=128,
-                            step=8,
                             minimum=8,
                             maximum=512,
+                            step=8,
+                            value=128,
                             label="Длина шага",
                             info="Меньшие значения приводят к более длительным преобразованиям, что увеличивает риск появления артефактов в голосе, однако при этом достигается более точная передача тона.",
+                            interactive=True,
                             visible=False,
                         )
                         index_rate = gr.Slider(
-                            value=0,
-                            step=0.1,
                             minimum=0,
                             maximum=1,
+                            step=0.1,
+                            value=0,
                             label="Влияние индекса",
                             info="Влияние, оказываемое индексным файлом; Чем выше значение, тем больше влияние. Однако выбор более низких значений может помочь смягчить артефакты, присутствующие в аудио.",
+                            interactive=True,
+                            visible=True,
                         )
                         filter_radius = gr.Slider(
-                            value=3,
-                            step=1,
                             minimum=0,
                             maximum=7,
+                            step=1,
+                            value=3,
                             label="Радиус фильтра",
                             info="Если это число больше или равно трем, использование медианной фильтрации по собранным результатам тона может привести к снижению дыхания..",
+                            interactive=True,
+                            visible=True,
                         )
                         volume_envelope = gr.Slider(
-                            value=0.25,
-                            step=0.01,
                             minimum=0,
                             maximum=1,
+                            step=0.01,
+                            value=0.25,
                             label="Скорость смешивания RMS",
                             info="Заменить или смешать с огибающей громкости выходного сигнала. Чем ближе значение к 1, тем больше используется огибающая выходного сигнала.",
+                            interactive=True,
+                            visible=True,
                         )
                         protect = gr.Slider(
-                            value=0.33,
-                            step=0.01,
                             minimum=0,
                             maximum=0.5,
+                            step=0.01,
+                            value=0.33,
                             label="Защита согласных",
                             info="Защитить согласные и звуки дыхания, чтобы избежать электроакустических разрывов и артефактов. Максимальное значение параметра 0.5 обеспечивает полную защиту. Уменьшение этого значения может снизить защиту, но уменьшить эффект индексирования.",
+                            interactive=True,
+                            visible=True,
                         )
 
             with gr.Accordion("Расширенные настройки", open=False):
                 with gr.Column():
                     with gr.Row():
                         f0_min = gr.Slider(
-                            value=50,
-                            step=1,
                             minimum=1,
                             maximum=120,
+                            step=1,
+                            value=50,
                             label="Минимальный диапазон тона",
                             info="Определяет нижнюю границу диапазона тона, который алгоритм будет использовать для определения основной частоты (F0) в аудиосигнале.",
+                            interactive=True,
+                            visible=True,
                         )
                         f0_max = gr.Slider(
-                            value=1100,
-                            step=1,
                             minimum=380,
                             maximum=16000,
+                            step=1,
+                            value=1100,
                             label="Максимальный диапазон тона",
                             info="Определяет верхнюю границу диапазона тона, который алгоритм будет использовать для определения основной частоты (F0) в аудиосигнале.",
+                            interactive=True,
+                            visible=True,
                         )
 
     # Загрузка файлов
-    uploaded_file.upload(
-        process_file_upload, inputs=[uploaded_file], outputs=[song_input, local_file]
+    local_file.input(
+        process_file_upload, inputs=[local_file], outputs=[song_input, local_file]
     )
 
     # Обновление кнопок
-    uploaded_file.upload(update_button_text, outputs=[uploaded_file])
     show_upload_button.click(
         swap_visibility, outputs=[upload_file, enter_local_file, song_input, local_file]
     )
@@ -267,6 +308,14 @@ def inference_tab():
 
     # Показать hop_length
     f0_method.change(show_hop_slider, inputs=f0_method, outputs=hop_length)
+
+    # Переключение equal_height
+    show_upload_button.click(
+        lambda: gr.update(equal_height=True), outputs=[align]
+    )
+    show_enter_button.click(
+        lambda: gr.update(equal_height=False), outputs=[align]
+    )
 
     # Обновление списка моделей
     ref_btn.click(update_models_list, None, outputs=rvc_model)
