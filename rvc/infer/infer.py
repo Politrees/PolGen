@@ -105,15 +105,12 @@ def convert_to_stereo(input_path, output_path, output_format):
         y = np.vstack([y, y])
     elif y.ndim > 2:
         y = y[:2, :]
-    
+
     # Конвертируем numpy массив в AudioSegment
     audio_segment = AudioSegment(
-        y.tobytes(), 
-        frame_rate=sr,
-        sample_width=y.dtype.itemsize, 
-        channels=2
+        y.tobytes(), frame_rate=sr, sample_width=y.dtype.itemsize, channels=2
     )
-    
+
     # Экспортируем в нужный формат
     audio_segment.export(output_path, format=output_format)
 

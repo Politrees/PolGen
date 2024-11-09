@@ -144,14 +144,14 @@ def edge_tts_tab():
                     choices=list(edge_voices.keys()),
                     interactive=True,
                     visible=True,
-                    )
+                )
                 voice = gr.Dropdown(
                     value="en-GB-SoniaNeural",
                     label="Голос",
                     choices=["en-GB-SoniaNeural", "en-GB-RyanNeural"],
                     interactive=True,
                     visible=True,
-                    )
+                )
         with gr.Column(variant="panel", scale=2):
             with gr.Group():
                 rvc_model = gr.Dropdown(

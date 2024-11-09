@@ -35,7 +35,9 @@ def voice_pipeline(
 
     progress(0, "Запуск конвейера генерации...")
     base_name = os.path.splitext(os.path.basename(uploaded_file))[0]
-    voice_convert_path = os.path.join(OUTPUT_DIR, f"{base_name}_(Converted).{output_format}")
+    voice_convert_path = os.path.join(
+        OUTPUT_DIR, f"{base_name}_(Converted).{output_format}"
+    )
 
     progress(0.5, "Преобразование голоса...")
     rvc_infer(
