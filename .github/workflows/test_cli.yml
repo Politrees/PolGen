@@ -27,6 +27,11 @@ jobs:
         pip install -r requirements.txt
         pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --upgrade --index-url https://download.pytorch.org/whl/cu121
 
+    - name: Установка ffmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+
     - name: Установка необходимых моделей
       run: |
         python download_models.py
@@ -58,6 +63,11 @@ jobs:
         pip install --upgrade pip==24.0
         pip install --no-cache-dir -r requirements.txt
         pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --upgrade --index-url https://download.pytorch.org/whl/cu121
+
+    - name: Установка ffmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
 
     - name: Установка необходимых моделей
       run: |
