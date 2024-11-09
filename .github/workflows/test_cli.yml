@@ -30,7 +30,7 @@ jobs:
     - name: Установка необходимых моделей
       run: |
         python download_models.py
-        python3 -m rvc.modules.model_manager "https://huggingface.co/Politrees/Victor_Tsoi/resolve/main/Victor_Tsoi.zip?download=true" "Tsoi"
+        python3 -m tabs.install "https://huggingface.co/Politrees/Victor_Tsoi/resolve/main/Victor_Tsoi.zip?download=true" "Tsoi"
 
     - name: Установка аудио для теста
       run: |
@@ -62,7 +62,7 @@ jobs:
     - name: Установка необходимых моделей
       run: |
         python download_models.py
-        python3 -m rvc.modules.model_manager "https://huggingface.co/Politrees/Victor_Tsoi/resolve/main/Victor_Tsoi.zip?download=true" "Tsoi"
+        python3 -m tabs.install "https://huggingface.co/Politrees/Victor_Tsoi/resolve/main/Victor_Tsoi.zip?download=true" "Tsoi"
 
     - name: Запуск скрипта tts_cli
       run: |
