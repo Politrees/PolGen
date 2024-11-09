@@ -14,6 +14,7 @@ set "CONDA_EXE=%MINICONDA_DIR%\Scripts\conda.exe"
 call :install_miniconda
 call :create_conda_env
 call :install_dependencies
+call :download_ffmpeg
 call :installing_necessary_models
 
 echo PolGen has been installed successfully!
@@ -64,6 +65,18 @@ pip install -r "%PRINCIPAL%\requirements.txt" || goto :error
 pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --upgrade --index-url https://download.pytorch.org/whl/cu121 || goto :error
 call "%MINICONDA_DIR%\condabin\conda.bat" deactivate
 echo Dependencies installation complete.
+echo.
+exit /b 0
+
+:download_ffmpeg
+echo Downloading ffmpeg and ffprobe...
+powershell -Command "& {Invoke-WebRequest -Uri 'https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffmpeg.exe?download=true' -OutFile 'ffmpeg.exe'}"
+if not exist "ffmpeg.exe" goto :download_error
+
+powershell -Command "& {Invoke-WebRequest -Uri 'https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffprobe.exe?download=true' -OutFile 'ffprobe.exe'}"
+if not exist "ffprobe.exe" goto :download_error
+
+echo ffmpeg and ffprobe downloaded successfully.
 echo.
 exit /b 0
 
