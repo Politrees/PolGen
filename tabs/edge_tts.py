@@ -121,7 +121,7 @@ def edge_tts_pipeline(
         f0_max,
     )
 
-    progress(0.75, f"Конвертация речи в стерео формат...")
+    progress(0.75, "Конвертация речи в стерео формат...")
     convert_to_stereo(tts_voice_convert_path, tts_voice_convert_path)
 
     return tts_voice_convert_path, tts_voice_path

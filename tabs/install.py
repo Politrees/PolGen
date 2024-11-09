@@ -27,18 +27,18 @@ models = [
 
 
 # Универсальная функция для скачивания файла с разных источников
-def download_file(url, zip_name):
+def download_file(url, zip_name, progres):
     try:
         if "drive.google.com" in url:
-            download_from_google_drive(url, zip_name)
+            download_from_google_drive(url, zip_name, progres)
         elif "huggingface.co" in url:
-            download_from_huggingface(url, zip_name)
+            download_from_huggingface(url, zip_name, progres)
         elif "pixeldrain.com" in url:
-            download_from_pixeldrain(url, zip_name)
+            download_from_pixeldrain(url, zip_name, progres)
         elif "mega.nz" in url:
-            download_from_mega(url, zip_name)
+            download_from_mega(url, zip_name, progres)
         elif "disk.yandex.ru" in url or "yadi.sk" in url:
-            download_from_yandex(url, zip_name)
+            download_from_yandex(url, zip_name, progres)
         else:
             raise ValueError(f"Неподдерживаемый источник: {url}")
     except Exception as e:
@@ -46,7 +46,7 @@ def download_file(url, zip_name):
 
 
 # Скачивание файла с Google Drive с помощью библиотеки gdown
-def download_from_google_drive(url, zip_name):
+def download_from_google_drive(url, zip_name, progress):
     progress(0.5, desc="Загрузка модели с Google Drive...")
     file_id = (
         url.split("file/d/")[1].split("/")[0]
@@ -57,13 +57,13 @@ def download_from_google_drive(url, zip_name):
 
 
 # Скачивание файла с HuggingFace через urllib
-def download_from_huggingface(url, zip_name):
+def download_from_huggingface(url, zip_name, progres):
     progress(0.5, desc="Загрузка модели с HuggingFace...")
     urllib.request.urlretrieve(url, zip_name)
 
 
 # Скачивание файла с Pixeldrain через API
-def download_from_pixeldrain(url, zip_name):
+def download_from_pixeldrain(url, zip_name, progres):
     progress(0.5, desc="Загрузка модели с Pixeldrain...")
     file_id = url.split("pixeldrain.com/u/")[1]
     response = requests.get(f"https://pixeldrain.com/api/file/{file_id}")
@@ -72,14 +72,14 @@ def download_from_pixeldrain(url, zip_name):
 
 
 # Скачивание файла с Mega через библиотеку Mega
-def download_from_mega(url, zip_name):
+def download_from_mega(url, zip_name, progres):
     progress(0.5, desc="Загрузка модели с Mega...")
     m = Mega()
     m.download_url(url, dest_filename=str(zip_name))
 
 
 # Скачивание файла с Яндекс Диска через публичное API
-def download_from_yandex(url, zip_name):
+def download_from_yandex(url, zip_name, progres):
     progress(0.5, desc="Загрузка модели с Яндекс Диска...")
     yandex_public_key = f"download?public_key={url}"
     yandex_api_url = (
@@ -106,7 +106,7 @@ def download_from_url(url, dir_name, progress=gr.Progress(track_tqdm=True)):
                 f"Директория голосовой модели {dir_name} уже существует! Выберите другое имя для вашей голосовой модели."
             )
 
-        download_file(url, zip_name)
+        download_file(url, zip_name, progres)
         progress(0.8, desc="Распаковка zip-файла...")
         extract_zip(extraction_folder, zip_name)
         return f"Модель {dir_name} успешно загружена!"

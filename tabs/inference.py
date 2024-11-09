@@ -65,7 +65,7 @@ def voice_pipeline(
         f0_max,
     )
 
-    progress(0.8, f"Конвертация голоса в стерео формат...")
+    progress(0.8, "Конвертация голоса в стерео формат...")
     convert_to_stereo(voice_convert_path, voice_convert_path)
 
     return voice_convert_path

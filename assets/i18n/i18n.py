@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import json
 from pathlib import Path
 from locale import getdefaultlocale
@@ -11,7 +12,7 @@ class I18nAuto:
     LANGUAGE_PATH = os.path.join(os.getcwd(), "assets", "i18n", "languages")
 
     def __init__(self, language=None):
-        override = false
+        override = False
         lang_prefix = "en_US"
 
         self.language = lang_prefix
