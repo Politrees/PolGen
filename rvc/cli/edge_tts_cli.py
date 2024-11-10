@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from tabs.edge_tts import edge_tts_pipeline
+from tabs.edge_tts.edge_tts import edge_tts_pipeline
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")
 
@@ -26,8 +26,7 @@ args = parser.parse_args()
 model_name = args.model_name
 if not os.path.exists(os.path.join(rvc_models_dir, model_name)):
     raise Exception(
-        f"\033[91mМодели {model_name} не существует. "
-        "Возможно, вы неправильно ввели имя.\033[0m"
+        f"\033[91mМодели {model_name} не существует. Возможно, вы неправильно ввели имя.\033[0m"
     )
 
 cover_path = edge_tts_pipeline(

@@ -3,8 +3,9 @@ import sys
 import gradio as gr
 
 from tabs.welcome import welcome_tab
-from tabs.inference import inference_tab, inference_batch_tab
-from tabs.install import zip_upload, files_upload, output_message
+from tabs.inference.inference_single import inference_single_tab
+from tabs.inference.inference_batch import inference_batch_tab
+from tabs.install.install import zip_upload, files_upload, output_message
 
 
 DEFAULT_PORT = 4000
@@ -30,7 +31,7 @@ with gr.Blocks(
 
     with gr.Tab("Преобразование голоса"):
         with gr.Tab("Одиночное преобразование"):
-            inference_tab()
+            inference_single_tab()
         with gr.Tab("Пакетное преобразование"):
             inference_batch_tab()
 

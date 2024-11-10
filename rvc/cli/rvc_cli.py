@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from tabs.inference import voice_pipeline
+from tabs.inference.inference_single import voice_pipeline_single
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")
 
@@ -25,11 +25,10 @@ args = parser.parse_args()
 model_name = args.model_name
 if not os.path.exists(os.path.join(rvc_models_dir, model_name)):
     raise Exception(
-        f"\033[91mМодели {model_name} не существует. "
-        "Возможно, вы неправильно ввели имя.\033[0m"
+        f"\033[91mМодели {model_name} не существует. Возможно, вы неправильно ввели имя.\033[0m"
     )
 
-cover_path = voice_pipeline(
+cover_path = voice_pipeline_single(
     uploaded_file=args.song_input,
     voice_model=model_name,
     pitch=args.pitch,
