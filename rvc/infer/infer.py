@@ -3,9 +3,10 @@ import gc
 import torch
 import librosa
 import numpy as np
-from fairseq import checkpoint_utils
-from pydub import AudioSegment
+import soundfile as sf
 from scipy.io import wavfile
+from pydub import AudioSegment
+from fairseq import checkpoint_utils
 
 from rvc.lib.algorithm.synthesizers import Synthesizer
 from rvc.lib.my_utils import load_audio
@@ -103,20 +104,27 @@ def get_vc(model_path):
 
 
 # Конвертирует аудиофайл в стерео формат.
-def convert_to_stereo(input_path, output_path, output_format):
-    y, sr = librosa.load(input_path, sr=None, mono=False)
-    if y.ndim == 1:
-        y = np.vstack([y, y])
-    elif y.ndim > 2:
-        y = y[:2, :]
+def convert_to_stereo(input_path, output_path):
+    # Загружаем аудиофайл
+    y, sr = sf.read(input_path)
 
-    # Конвертируем numpy массив в AudioSegment
-    audio_segment = AudioSegment(
-        y.tobytes(), frame_rate=sr, sample_width=y.dtype.itemsize, channels=2
-    )
+    # Если аудио моно, дублируем канал
+    if len(y.shape) == 1:
+        y = np.vstack([y, y]).T
+    elif len(y.shape) > 2:
+        y = y[:, :2]
 
-    # Экспортируем в нужный формат
-    audio_segment.export(output_path, format=output_format)
+    # Сохраняем результат в файл с форматом .flac
+    sf.write(output_path, y, sr, format='FLAC')
+
+
+# Конвертирует аудиофайл в выбранный пользователем формат.
+def convert_to_user_format(input_path, output_path, output_format):
+    # Загружаем аудиофайл
+    audio = AudioSegment.from_file(input_path)
+
+    # Сохраняем аудиофайл в выбранном формате
+    audio.export(output_path, format=output_format)
 
 
 # Выполняет инференс с использованием RVC
@@ -146,7 +154,8 @@ def rvc_infer(
 
     # Формируем имя выходного файла
     base_name = os.path.splitext(os.path.basename(input_path))[0]
-    output_path = os.path.join(output_dir, f"{base_name}_(Converted).{output_format}")
+    temp_output_path = os.path.join(output_dir, f"{base_name}_(Converted).flac")
+    final_output_path = os.path.join(output_dir, f"{base_name}_(Converted).{output_format}")
 
     # Выполняем конвертацию голоса
     audio_opt = vc.pipeline(
@@ -170,15 +179,23 @@ def rvc_infer(
         f0_file=None,
     )
     # Сохраняем результат в файл
-    wavfile.write(output_path, tgt_sr, audio_opt)
+    wavfile.write(temp_output_path, tgt_sr, audio_opt)
 
-    # Конвертируем файл в стерео формат
-    convert_to_stereo(output_path, output_path, output_format)
+    # Конвертируем файл в стерео формат с использованием scipy
+    convert_to_stereo(temp_output_path, temp_output_path)
+
+    # Конвертируем файл в выбранный пользователем формат
+    convert_to_user_format(temp_output_path, final_output_path, output_format)
+
+    # Удаляем временный файл
+    os.remove(temp_output_path)
 
     # Освобождаем память
     del hubert_model, cpt, net_g, vc
     gc.collect()
     torch.cuda.empty_cache()
+
+    return final_output_path  # Возвращаем путь к выходному файлу
 
 
 # Выполняет пакетное преобразование файлов с использованием rvc_infer

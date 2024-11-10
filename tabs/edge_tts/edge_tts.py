@@ -94,7 +94,7 @@ def edge_tts_pipeline(
     asyncio.run(text_to_speech(text, voice, tts_voice_path))
 
     progress(0.8, "Преобразование речи...")
-    rvc_infer(
+    output_path = rvc_infer(
         voice_model,
         tts_voice_path,
         OUTPUT_DIR_TTS,
@@ -110,7 +110,7 @@ def edge_tts_pipeline(
         output_format,
     )
 
-    return rvc_infer, tts_voice_path
+    return output_path, tts_voice_path
 
 
 # Возвращает список папок, находящихся в директории моделей

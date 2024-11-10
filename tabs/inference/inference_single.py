@@ -31,7 +31,7 @@ def voice_pipeline_single(
     progress(0, "Запуск конвейера генерации...")
 
     progress(0.5, "Преобразование голоса...")
-    rvc_infer(
+    output_path = rvc_infer(
         voice_model,
         uploaded_file,
         OUTPUT_DIR_SINGLE,
@@ -47,7 +47,7 @@ def voice_pipeline_single(
         output_format,
     )
 
-    return rvc_infer
+    return output_path  # Возвращаем путь к выходному файлу
 
 
 # Возвращает список папок, находящихся в директории моделей

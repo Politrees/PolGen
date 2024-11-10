@@ -31,7 +31,7 @@ def voice_pipeline_batch(
     progress(0, "Запуск конвейера генерации...")
 
     progress(0.5, "Преобразование голоса...")
-    rvc_infer_batch(
+    output_path = rvc_infer_batch(
         voice_model,
         uploaded_files,
         OUTPUT_DIR_BATCH,
@@ -47,7 +47,7 @@ def voice_pipeline_batch(
         output_format,
     )
 
-    return rvc_infer_batch
+    return output_path
 
 
 # Возвращает список папок, находящихся в директории моделей
@@ -64,28 +64,11 @@ def update_models_list():
     return gr.update(choices=get_folders(RVC_MODELS_DIR))
 
 
-def process_file_upload(file):
-    return file, gr.update(value=file)
-
-
 def show_hop_slider(pitch_detection_algo):
     if pitch_detection_algo in ["mangio-crepe"]:
         return gr.update(visible=True)
     else:
         return gr.update(visible=False)
-
-
-def swap_visibility():
-    return (
-        gr.update(visible=True),
-        gr.update(visible=False),
-        gr.update(value=""),
-        gr.update(value=None),
-    )
-
-
-def swap_buttons():
-    return gr.update(visible=False), gr.update(visible=True)
 
 
 # Вкладка "Пакетное преобразование" для интерфейса
@@ -135,34 +118,12 @@ def inference_batch_tab():
                 scale=2,
             )
 
-    with gr.Column():
-        with gr.Column() as upload_file:
-            input_file = gr.Files(
-                label="Аудио",
-                type="filepath",
-                file_types=["audio"],
-                interactive=True,
-                visible=True,
-            )
-        with gr.Column(visible=False) as enter_local_dir:
-            input_dir = gr.Text(
-                label="Путь к папке с файлами:",
-                info="Введите полный путь к папке с файлами.",
-                interactive=True,
-                visible=True,
-            )
-
-        with gr.Column():
-            show_upload_button = gr.Button(
-                value="Загрузить файлы с устройства",
-                interactive=True,
-                visible=False,
-            )
-            show_enter_button = gr.Button(
-                value="Ввести путь к папке с файлами",
-                interactive=True,
-                visible=True,
-            )
+    input_dir = gr.Text(
+        label="Путь к папке с файлами:",
+        info="Введите полный путь к папке с файлами.",
+        interactive=True,
+        visible=True,
+    )
 
     output_message = gr.Text(
         label="Сообщение вывода",
@@ -258,20 +219,6 @@ def inference_batch_tab():
                             interactive=True,
                             visible=True,
                         )
-
-    # Обновление кнопок
-    show_upload_button.click(
-        swap_visibility, outputs=[upload_file, enter_local_dir, input_dir, input_file]
-    )
-    show_enter_button.click(
-        swap_visibility, outputs=[enter_local_dir, upload_file, input_dir, input_file]
-    )
-    show_upload_button.click(
-        swap_buttons, outputs=[show_upload_button, show_enter_button]
-    )
-    show_enter_button.click(
-        swap_buttons, outputs=[show_enter_button, show_upload_button]
-    )
 
     # Показать hop_length
     f0_method.change(show_hop_slider, inputs=f0_method, outputs=hop_length)
