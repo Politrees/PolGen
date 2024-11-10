@@ -3,7 +3,7 @@ import sys
 import gradio as gr
 
 from tabs.welcome import welcome_tab
-from tabs.inference import inference_tab
+from tabs.inference import inference_tab, inference_batch_tab
 from tabs.install import zip_upload, files_upload, output_message
 
 
@@ -29,7 +29,10 @@ with gr.Blocks(
         welcome_tab()
 
     with gr.Tab("Преобразование голоса"):
-        inference_tab()
+        with gr.Tab("Одиночное преобразование"):
+            inference_tab()
+        with gr.Tab("Пакетное преобразование"):
+            inference_batch_tab()
 
     with gr.Tab("Загрузка RVC моделей"):
         zip_upload(output_message_component)

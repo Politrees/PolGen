@@ -3,7 +3,7 @@ import sys
 import gradio as gr
 
 from tabs.welcome import welcome_tab
-from tabs.inference import inference_tab
+from tabs.inference import inference_tab, inference_batch_tab
 from tabs.edge_tts import edge_tts_tab
 from tabs.uvr import uvr_tab
 from tabs.install import (
@@ -37,7 +37,10 @@ with gr.Blocks(
         welcome_tab()
 
     with gr.Tab("Преобразование голоса"):
-        inference_tab()
+        with gr.Tab("Одиночное преобразование"):
+            inference_tab()
+        with gr.Tab("Пакетное преобразование"):
+            inference_batch_tab()
 
     with gr.Tab("Преобразование текста в речь"):
         edge_tts_tab()

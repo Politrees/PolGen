@@ -15,10 +15,13 @@ from rvc.infer.pipeline import VC
 # Инициализация конфигурации
 config = Config()
 
-# Определение путей к директориям с моделями
-RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
-HUBERT_PATH = os.path.join(os.getcwd(), "rvc", "models", "embedders", "hubert_base.pt")
 
+RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
+EMBEDDERS_DIR = os.path.join(os.getcwd(), "rvc", "models", "embedders")
+HUBERT_BASE_PATH = os.path.join(EMBEDDERS_DIR, "hubert_base.pt")
+
+os.makedirs(EMBEDDERS_DIR, exist_ok=True)
+os.makedirs(RVC_MODELS_DIR, exist_ok=True)
 
 # Загружает модель RVC и индекс по имени модели.
 def load_rvc_model(rvc_model):
@@ -119,7 +122,7 @@ def convert_to_stereo(input_path, output_path, output_format):
 def rvc_infer(
     voice_model,
     input_path,
-    output_path,
+    output_dir,
     index_rate,
     pitch,
     f0_method,
@@ -132,13 +135,18 @@ def rvc_infer(
     output_format,
 ):
     # Загружаем модель Hubert
-    hubert_model = load_hubert(HUBERT_PATH)
+    hubert_model = load_hubert(HUBERT_BASE_PATH)
     # Загружаем модель RVC и индекс
     model_path, index_path = load_rvc_model(voice_model)
     # Получаем конвертер голоса
     cpt, version, net_g, tgt_sr, vc = get_vc(model_path)
     # Загружаем аудиофайл
     audio = load_audio(input_path, 16000)
+    
+    # Формируем имя выходного файла
+    base_name = os.path.splitext(os.path.basename(input_path))[0]
+    output_path = os.path.join(output_dir, f"{base_name}_(Converted).{output_format}")
+
     # Выполняем конвертацию голоса
     audio_opt = vc.pipeline(
         hubert_model,
@@ -214,7 +222,6 @@ def rvc_infer_batch(
     for input_file in input_files:
         # Формируем пути к входному и выходному файлам
         input_path = os.path.join(input_dir, input_file)
-        output_path = os.path.join(output_dir, input_file)
 
         print(f"Преобразование {input_file}...")
 
@@ -222,7 +229,7 @@ def rvc_infer_batch(
         rvc_infer(
             voice_model,
             input_path,
-            output_path,
+            output_dir,
             index_rate,
             pitch,
             f0_method,

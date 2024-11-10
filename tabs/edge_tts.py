@@ -8,7 +8,10 @@ from rvc.infer.infer import rvc_infer
 
 RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
 OUTPUT_DIR = os.path.join(os.getcwd(), "output", "converted_audio")
+OUTPUT_DIR_TTS = os.path.join(OUTPUT_DIR, "tts")
 
+os.makedirs(RVC_MODELS_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR_TTS, exist_ok=True)
 
 edge_voices = {
     "Английский (Великобритания)": ["en-GB-SoniaNeural", "en-GB-RyanNeural"],
@@ -85,10 +88,7 @@ def edge_tts_pipeline(
         raise ValueError("Выберите модель голоса для преобразования.")
 
     progress(0, "Запуск конвейера генерации...")
-    tts_voice_path = os.path.join(OUTPUT_DIR, "TTS_Voice.wav")
-    tts_voice_convert_path = os.path.join(
-        OUTPUT_DIR, f"TTS_Voice_Converted.{output_format}"
-    )
+    tts_voice_path = os.path.join(OUTPUT_DIR_TTS, "TTS_Voice.wav")
 
     progress(0.4, "Синтез речи...")
     asyncio.run(text_to_speech(text, voice, tts_voice_path))
@@ -97,7 +97,7 @@ def edge_tts_pipeline(
     rvc_infer(
         voice_model,
         tts_voice_path,
-        tts_voice_convert_path,
+        OUTPUT_DIR_TTS,
         index_rate,
         pitch,
         f0_method,
@@ -110,7 +110,7 @@ def edge_tts_pipeline(
         output_format,
     )
 
-    return tts_voice_convert_path, tts_voice_path
+    return rvc_infer, tts_voice_path
 
 
 # Возвращает список папок, находящихся в директории моделей
