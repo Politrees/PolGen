@@ -107,7 +107,7 @@ def inference_batch_tab():
                     interactive=True,
                     visible=True,
                 )
-            with gr.Column(scale=3): 
+            with gr.Column(scale=3):
                 pitch = gr.Slider(
                     minimum=-24,
                     maximum=24,
