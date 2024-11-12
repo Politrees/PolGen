@@ -1,9 +1,9 @@
-import os
-import torch
-import shutil
 import logging
-import gradio as gr
+import os
+import shutil
 
+import gradio as gr
+import torch
 from audio_separator.separator import Separator
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

@@ -1,8 +1,9 @@
 import math
+from typing import Optional
+
 import torch
 from torch import nn
 from torch.nn.utils.weight_norm import remove_weight_norm
-from typing import Optional
 
 from .attentions import FFN, MultiHeadAttention
 from .commons import sequence_mask

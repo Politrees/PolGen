@@ -1,9 +1,8 @@
+import json
 import os
 import sys
-import json
-from pathlib import Path
 from locale import getdefaultlocale
-
+from pathlib import Path
 
 sys.path.append(os.getcwd())
 

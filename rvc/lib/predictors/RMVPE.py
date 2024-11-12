@@ -1,10 +1,10 @@
-import torch
 import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from librosa.filters import mel
+from librosa.util import normalize, pad_center, tiny
 from scipy.signal import get_window
-from librosa.util import pad_center, tiny, normalize
 
 
 def window_sumsquare(

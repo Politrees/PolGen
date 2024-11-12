@@ -1,21 +1,20 @@
+import math
+import os
+from functools import partial
 from typing import Union
 
-import torch.nn.functional as F
+import librosa
 import numpy as np
+import soundfile as sf
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torch.utils.data
+from einops import rearrange, repeat
+from librosa.filters import mel as librosa_mel_fn
+from local_attention import LocalAttention
 from torch.nn.utils.parametrizations import weight_norm
 from torchaudio.transforms import Resample
-import os
-import librosa
-import soundfile as sf
-import torch.utils.data
-from librosa.filters import mel as librosa_mel_fn
-import math
-from functools import partial
-
-from einops import rearrange, repeat
-from local_attention import LocalAttention
 
 os.environ["LRU_CACHE_CAPACITY"] = "3"
 

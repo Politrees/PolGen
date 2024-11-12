@@ -1,7 +1,7 @@
 import ast
 import json
-from pathlib import Path
 from collections import OrderedDict
+from pathlib import Path
 
 
 def extract_i18n_strings(node):
