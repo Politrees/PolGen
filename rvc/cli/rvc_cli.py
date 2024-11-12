@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from rvc.infer.infer import voice_pipeline_single
+from tabs.inference.inference_single import voice_pipeline_single
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")
 

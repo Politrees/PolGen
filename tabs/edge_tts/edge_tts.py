@@ -1,9 +1,17 @@
+import asyncio
 import os
 
+import edge_tts
 import gradio as gr
 
-from rvc.infer.infer import edge_tts_pipeline, RVC_MODELS_DIR
+from rvc.infer.infer import rvc_infer
 
+RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
+OUTPUT_DIR = os.path.join(os.getcwd(), "output", "converted_audio")
+OUTPUT_DIR_TTS = os.path.join(OUTPUT_DIR, "tts")
+
+os.makedirs(RVC_MODELS_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR_TTS, exist_ok=True)
 
 edge_voices = {
     "Английский (Великобритания)": ["en-GB-SoniaNeural", "en-GB-RyanNeural"],
@@ -47,6 +55,62 @@ edge_voices = {
 def update_edge_voices(selected_language):
     voices = edge_voices[selected_language]
     return gr.update(choices=voices, value=voices[0] if voices else None)
+
+
+# Синтезирует текст в речь с использованием edge_tts.
+async def text_to_speech(text, voice, output_path):
+    communicate = edge_tts.Communicate(text=text, voice=voice)
+    await communicate.save(output_path)
+
+
+# Основной конвейер для синтеза речи и преобразования голоса.
+def edge_tts_pipeline(
+    text,
+    voice_model,
+    voice,
+    pitch,
+    index_rate=0.5,
+    filter_radius=3,
+    volume_envelope=0.25,
+    f0_method="rmvpe+",
+    hop_length=128,
+    protect=0.33,
+    output_format="mp3",
+    f0_min=50,
+    f0_max=1100,
+    progress=gr.Progress(track_tqdm=True),
+):
+    if not text:
+        raise ValueError("Введите необходимый текст в поле для ввода.")
+    if not voice:
+        raise ValueError("Выберите язык и голос для синтеза речи.")
+    if not voice_model:
+        raise ValueError("Выберите модель голоса для преобразования.")
+
+    progress(0, "Запуск конвейера генерации...")
+    tts_voice_path = os.path.join(OUTPUT_DIR_TTS, "TTS_Voice.wav")
+
+    progress(0.4, "Синтез речи...")
+    asyncio.run(text_to_speech(text, voice, tts_voice_path))
+
+    progress(0.8, "Преобразование речи...")
+    output_path = rvc_infer(
+        voice_model,
+        tts_voice_path,
+        OUTPUT_DIR_TTS,
+        index_rate,
+        pitch,
+        f0_method,
+        filter_radius,
+        volume_envelope,
+        protect,
+        hop_length,
+        f0_min,
+        f0_max,
+        output_format,
+    )
+
+    return output_path, tts_voice_path
 
 
 # Возвращает список папок, находящихся в директории моделей
