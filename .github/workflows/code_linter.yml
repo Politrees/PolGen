@@ -23,10 +23,15 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Установка flake8
+      - name: Установка зависимостей
         run: |
-          pip install flake8
+          python -m pip install --upgrade pip
+          pip install flake8 pylint
 
       - name: Запуск flake8
         run: flake8 .
+        continue-on-error: true
+
+      - name: Запуск PyLint
+        run: pylint . 
         continue-on-error: true
