@@ -1,4 +1,5 @@
 import os
+
 import requests
 
 PREDICTORS = "https://huggingface.co/Politrees/RVC_resources/resolve/main/predictors/"

@@ -1,17 +1,18 @@
-import os
 import gc
-import torch
+import os
+
 import librosa
 import numpy as np
 import soundfile as sf
-from scipy.io import wavfile
-from pydub import AudioSegment
+import torch
 from fairseq import checkpoint_utils
+from pydub import AudioSegment
+from scipy.io import wavfile
 
-from rvc.lib.algorithm.synthesizers import Synthesizer
-from rvc.lib.my_utils import load_audio
 from rvc.infer.config import Config
 from rvc.infer.pipeline import VC
+from rvc.lib.algorithm.synthesizers import Synthesizer
+from rvc.lib.my_utils import load_audio
 
 # Инициализация конфигурации
 config = Config()
@@ -115,7 +116,7 @@ def convert_to_stereo(input_path, output_path):
         y = y[:, :2]
 
     # Сохраняем результат в файл с форматом .flac
-    sf.write(output_path, y, sr, format='FLAC')
+    sf.write(output_path, y, sr, format="FLAC")
 
 
 # Конвертирует аудиофайл в выбранный пользователем формат.
@@ -155,7 +156,9 @@ def rvc_infer(
     # Формируем имя выходного файла
     base_name = os.path.splitext(os.path.basename(input_path))[0]
     temp_output_path = os.path.join(output_dir, f"{base_name}_(Converted).flac")
-    final_output_path = os.path.join(output_dir, f"{base_name}_(Converted).{output_format}")
+    final_output_path = os.path.join(
+        output_dir, f"{base_name}_(Converted).{output_format}"
+    )
 
     # Выполняем конвертацию голоса
     audio_opt = vc.pipeline(

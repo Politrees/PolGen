@@ -1,7 +1,7 @@
 import torch
 from torch import nn
-from torch.nn.utils.weight_norm import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
+from torch.nn.utils.weight_norm import remove_weight_norm
 
 from .commons import fused_add_tanh_sigmoid_multiply
 

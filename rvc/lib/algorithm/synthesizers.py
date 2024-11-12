@@ -1,10 +1,11 @@
+from typing import Optional
+
 import torch
 from torch import nn
 from torch.nn.utils.weight_norm import remove_weight_norm
-from typing import Optional
 
-from .commons import slice_segments, rand_slice_segments
-from .encoders import TextEncoder, PosteriorEncoder
+from .commons import rand_slice_segments, slice_segments
+from .encoders import PosteriorEncoder, TextEncoder
 from .generators import Generator
 from .nsf import GeneratorNSF
 from .residuals import ResidualCouplingBlock

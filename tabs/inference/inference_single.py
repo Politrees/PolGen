@@ -1,8 +1,8 @@
 import os
+
 import gradio as gr
 
 from rvc.infer.infer import rvc_infer
-
 
 RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
 OUTPUT_DIR = os.path.join(os.getcwd(), "output", "converted_audio")

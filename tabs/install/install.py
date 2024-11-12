@@ -1,14 +1,14 @@
 import os
 import re
-import sys
-import gdown
 import shutil
-import zipfile
-import requests
-import gradio as gr
+import sys
 import urllib.request
-from mega import Mega
+import zipfile
 
+import gdown
+import gradio as gr
+import requests
+from mega import Mega
 
 RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
 EMBEDDERS_DIR = os.path.join(os.getcwd(), "rvc", "models", "embedders")

@@ -1,12 +1,12 @@
 import os
 import sys
+
 import gradio as gr
 
-from tabs.welcome import welcome_tab
-from tabs.inference.inference_single import inference_single_tab
 from tabs.inference.inference_batch import inference_batch_tab
-from tabs.install.install import zip_upload, files_upload, output_message
-
+from tabs.inference.inference_single import inference_single_tab
+from tabs.install.install import files_upload, output_message, zip_upload
+from tabs.welcome import welcome_tab
 
 DEFAULT_PORT = 4000
 MAX_PORT_ATTEMPTS = 10

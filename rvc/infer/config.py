@@ -1,5 +1,6 @@
-import torch
 from multiprocessing import cpu_count
+
+import torch
 
 
 # Конфигурация устройства и параметров

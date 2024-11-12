@@ -6,7 +6,6 @@ from torch.nn.utils.parametrizations import spectral_norm, weight_norm
 from .commons import get_padding
 from .residuals import LRELU_SLOPE
 
-
 PERIODS_V1 = [2, 3, 5, 7, 11, 17]
 PERIODS_V2 = [2, 3, 5, 7, 11, 17, 23, 37]
 IN_CHANNELS = [1, 32, 128, 512, 1024]

@@ -1,20 +1,20 @@
 import os
 import sys
+
 import gradio as gr
 
-from tabs.welcome import welcome_tab
-from tabs.inference.inference_single import inference_single_tab
-from tabs.inference.inference_batch import inference_batch_tab
 from tabs.edge_tts.edge_tts import edge_tts_tab
-from tabs.uvr.uvr import uvr_tab
+from tabs.inference.inference_batch import inference_batch_tab
+from tabs.inference.inference_single import inference_single_tab
 from tabs.install.install import (
-    url_download,
-    zip_upload,
     files_upload,
     install_hubert_tab,
     output_message,
+    url_download,
+    zip_upload,
 )
-
+from tabs.uvr.uvr import uvr_tab
+from tabs.welcome import welcome_tab
 
 DEFAULT_PORT = 4000
 MAX_PORT_ATTEMPTS = 10
