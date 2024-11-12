@@ -26,20 +26,28 @@ jobs:
       - name: Установка зависимостей
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pylint vulture radon
+          pip install flake8 pylint bandit mypy prospector vulture
 
       - name: Запуск flake8
         run: flake8 .
         continue-on-error: true
 
       - name: Запуск PyLint
-        run: pylint . 
+        run: pylint .
+        continue-on-error: true
+
+      - name: Запуск Bandit
+        run: bandit -r .
+        continue-on-error: true
+
+      - name: Запуск Mypy
+        run: mypy .
+        continue-on-error: true
+
+      - name: Запуск Prospector
+        run: prospector .
         continue-on-error: true
 
       - name: Запуск Vulture
         run: vulture .
-        continue-on-error: true
-
-      - name: Запуск Radon
-        run: radon cc .
         continue-on-error: true
