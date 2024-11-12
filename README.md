@@ -56,3 +56,87 @@
 Если у вас есть вопросы или предложения, пожалуйста, свяжитесь со мной через [Telegram](https://t.me/Politrees2) или [GitHub Issues](https://github.com/Bebra777228/Pol-Litres-RVC/issues).
 
 ---
+
+# Структура проекта:
+```
+PolGen
+├── .github
+│   ├── ISSUE_TEMPLATE
+│   │   ├── BUG_REPORT.yml
+│   │   ├── FEATURE_REQUEST.yml
+│   │   └── QUESTION_DISCUSSION.yml
+│   ├── workflows
+│   │   ├── code_formatter.yml
+│   │   ├── code_linter.yml
+│   │   ├── test_cli.yml
+│   │   └── test_links.yml
+│   └── CODE_OF_CONDUCT.md
+├── assets
+│   ├── i18n
+│   │   ├── languages
+│   │   │   └── en_US.json
+│   │   ├── i18n.py
+│   │   └── scan.py
+│   └── logo.ico
+├── models
+│   └── .gitignore
+├── output
+│   ├── converted_audio
+│   │   └── .gitignore
+│   ├── separated_audio
+│   │   └── .gitignore
+│   └── .gitignore
+├── rvc
+│   ├── cli
+│   │   ├── edge_tts_cli.py
+│   │   └── rvc_cli.py
+│   ├── infer
+│   │   ├── config.py
+│   │   ├── infer.py
+│   │   └── pipeline.py
+│   ├── lib
+│   │   ├── algorithm
+│   │   │   ├── __init__.py
+│   │   │   ├── attentions.py
+│   │   │   ├── commons.py
+│   │   │   ├── discriminators.py
+│   │   │   ├── encoders.py
+│   │   │   ├── generators.py
+│   │   │   ├── modules.py
+│   │   │   ├── nsf.py
+│   │   │   ├── normalization.py
+│   │   │   ├── residuals.py
+│   │   │   └── synthesizers.py
+│   │   ├── predictors
+│   │   │   ├── FCPE.py
+│   │   │   └── RMVPE.py
+│   │   └── my_utils.py
+│   └── models
+│       ├── embedders
+│       │   └── .gitignore
+│       └── predictors
+│           └── .gitignore
+├── tabs
+│   ├── edge_tts
+│   │   └── edge_tts.py
+│   ├── inference
+│   │   ├── inference_batch.py
+│   │   └── inference_single.py
+│   ├── install
+│   │   └── install.py
+│   ├── uvr
+│   │   └── uvr.py
+│   └── welcome.py
+├── .gitignore
+├── LICENSE
+├── PolGen.exe
+├── README.md
+├── TODO.md
+├── app.py
+├── app_offline.py
+├── download_models.py
+├── requirements.txt
+├── run-PolGen.bat
+└── run-install.bat
+```
+---
