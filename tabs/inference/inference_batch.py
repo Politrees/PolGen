@@ -2,52 +2,7 @@ import os
 
 import gradio as gr
 
-from rvc.infer.infer import rvc_infer_batch
-
-RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
-OUTPUT_DIR = os.path.join(os.getcwd(), "output", "converted_audio")
-OUTPUT_DIR_BATCH = os.path.join(OUTPUT_DIR, "batch")
-
-os.makedirs(RVC_MODELS_DIR, exist_ok=True)
-os.makedirs(OUTPUT_DIR_BATCH, exist_ok=True)
-
-
-# Основной конвейер для преобразования голоса.
-def voice_pipeline_batch(
-    uploaded_files,
-    voice_model,
-    pitch,
-    index_rate=0.5,
-    filter_radius=3,
-    volume_envelope=0.25,
-    f0_method="rmvpe+",
-    hop_length=128,
-    protect=0.33,
-    output_format="mp3",
-    f0_min=50,
-    f0_max=1100,
-    progress=gr.Progress(track_tqdm=True),
-):
-    progress(0, "Запуск конвейера генерации...")
-
-    progress(0.5, "Преобразование голоса...")
-    output_path = rvc_infer_batch(
-        voice_model,
-        uploaded_files,
-        OUTPUT_DIR_BATCH,
-        index_rate,
-        pitch,
-        f0_method,
-        filter_radius,
-        volume_envelope,
-        protect,
-        hop_length,
-        f0_min,
-        f0_max,
-        output_format,
-    )
-
-    return output_path
+from rvc.infer.infer import voice_pipeline_batch, RVC_MODELS_DIR
 
 
 # Возвращает список папок, находящихся в директории моделей
