@@ -4,7 +4,7 @@ import os
 import edge_tts
 import gradio as gr
 
-from rvc.infer.infer import RVC_MODELS_DIR, rvc_infer
+from rvc.infer.infer import RVC_MODELS_DIR, tts_infer
 
 
 edge_voices = {
@@ -245,7 +245,7 @@ def edge_tts_tab():
 
     ref_btn.click(update_models_list, None, outputs=rvc_model)
     generate_btn.click(
-        rvc_infer,
+        tts_infer,
         inputs=[
             rvc_model,
             text_input,
@@ -259,7 +259,6 @@ def edge_tts_tab():
             f0_min,
             f0_max,
             output_format,
-            gr.State(True),
             voice,
         ],
         outputs=[tts_voice, converted_tts_voice],

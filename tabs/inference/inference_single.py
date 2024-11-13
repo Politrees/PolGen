@@ -262,8 +262,6 @@ def inference_single_tab():
             f0_min,
             f0_max,
             output_format,
-            gr.State(False),
-            gr.State(None),
         ],
         outputs=converted_voice,
     )
