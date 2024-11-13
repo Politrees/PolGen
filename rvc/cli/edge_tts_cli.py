@@ -1,6 +1,7 @@
 import argparse
 import os
-from rvc.infer.infer import tts_infer, RVC_MODELS_DIR
+
+from rvc.infer.infer import RVC_MODELS_DIR, tts_infer
 
 parser = argparse.ArgumentParser(
     description="Замена голоса в директории output/", add_help=True

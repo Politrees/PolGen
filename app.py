@@ -4,7 +4,8 @@ import sys
 import gradio as gr
 
 from tabs.edge_tts.edge_tts import edge_tts_tab
-#from tabs.inference.inference_batch import inference_batch_tab
+
+# from tabs.inference.inference_batch import inference_batch_tab
 from tabs.inference.inference_single import inference_single_tab
 from tabs.install.install import (
     files_upload,
@@ -40,7 +41,7 @@ with gr.Blocks(
     with gr.Tab("Преобразование голоса"):
         with gr.Tab("Одиночное преобразование"):
             inference_single_tab()
-        #with gr.Tab("Пакетное преобразование"):
+        # with gr.Tab("Пакетное преобразование"):
         #    inference_batch_tab()
 
     with gr.Tab("Преобразование текста в речь"):

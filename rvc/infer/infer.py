@@ -1,20 +1,21 @@
-import os
+import asyncio
 import gc
-import torch
+import os
+
+import edge_tts
+import gradio as gr
 import librosa
 import numpy as np
 import soundfile as sf
+import torch
 from fairseq import checkpoint_utils
 from pydub import AudioSegment
 from scipy.io import wavfile
-import asyncio
-import edge_tts
-import gradio as gr
 
-from rvc.lib.algorithm.synthesizers import Synthesizer
-from rvc.lib.my_utils import load_audio
 from rvc.infer.config import Config
 from rvc.infer.pipeline import VC
+from rvc.lib.algorithm.synthesizers import Synthesizer
+from rvc.lib.my_utils import load_audio
 
 # Инициализация конфигурации
 config = Config()
@@ -128,7 +129,7 @@ def convert_to_stereo(input_path, output_path):
 def convert_to_user_format(input_path, base_name, output_format):
     # Загружаем аудиофайл
     audio = AudioSegment.from_file(input_path)
-    
+
     output_name = os.path.splitext(os.path.basename(base_name))[0]
     output_path = os.path.join(OUTPUT_DIR, f"{output_name}_(Converted).{output_format}")
 
@@ -284,7 +285,9 @@ def tts_infer(
     )
 
     # Конвертируем файл в выбранный пользователем формат
-    final_output_path = convert_to_user_format(output_path, tts_voice_path, output_format)
+    final_output_path = convert_to_user_format(
+        output_path, tts_voice_path, output_format
+    )
 
     # Удаляем временный файл
     if os.path.exists(output_path):
