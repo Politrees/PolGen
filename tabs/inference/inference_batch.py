@@ -1,3 +1,4 @@
+'''
 import os
 
 import gradio as gr
@@ -245,3 +246,4 @@ def inference_batch_tab():
         ],
         outputs=[output_message],
     )
+'''
