@@ -1,6 +1,7 @@
 import math
-import torch
 from typing import List, Optional
+
+import torch
 
 
 def init_weights(m, mean=0.0, std=0.01):

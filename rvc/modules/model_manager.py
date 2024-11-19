@@ -1,7 +1,8 @@
 import os
-import sys
 import shutil
+import sys
 import zipfile
+
 import gradio as gr
 
 from rvc.modules.download_source import download_file
@@ -151,7 +152,9 @@ def upload_separate_files(pth_file, index_file, dir_name, progress=gr.Progress()
 # Основная функция для вызова из командной строки
 def main():
     if len(sys.argv) != 3:
-        print('\nИспользование:\npython3 -m rvc.modules.model_manager "url" "dir_name"\n')
+        print(
+            '\nИспользование:\npython3 -m rvc.modules.model_manager "url" "dir_name"\n'
+        )
         sys.exit(1)
 
     url = sys.argv[1]

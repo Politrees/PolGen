@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 import urllib.request
+
 import gradio as gr
 
 embedders_dir = os.path.join(os.getcwd(), "rvc", "models", "embedders")

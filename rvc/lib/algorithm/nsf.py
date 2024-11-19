@@ -1,12 +1,13 @@
 import math
+from typing import Optional
+
 import torch
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
-from typing import Optional
 
+from rvc.lib.algorithm.commons import init_weights
 from rvc.lib.algorithm.generators import SineGen
 from rvc.lib.algorithm.residuals import LRELU_SLOPE, ResBlock1, ResBlock2
-from rvc.lib.algorithm.commons import init_weights
 
 
 class SourceModuleHnNSF(torch.nn.Module):

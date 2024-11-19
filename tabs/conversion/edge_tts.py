@@ -1,10 +1,10 @@
 import os
+
 import gradio as gr
 
-from rvc.scripts.edge_tts_conversion import edge_tts_pipeline
 from rvc.modules.model_manager import get_folders, update_models_list
 from rvc.modules.ui_updates import show_hop_slider
-
+from rvc.scripts.edge_tts_conversion import edge_tts_pipeline
 from tabs.install.install_huberts import install_hubert_tab
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")

@@ -1,16 +1,16 @@
 import os
+
 import gradio as gr
 
-from rvc.scripts.voice_conversion import voice_pipeline
 from rvc.modules.model_manager import get_folders, update_models_list
 from rvc.modules.ui_updates import (
     process_file_upload,
     show_hop_slider,
-    update_button_text,
-    swap_visibility,
     swap_buttons,
+    swap_visibility,
+    update_button_text,
 )
-
+from rvc.scripts.voice_conversion import voice_pipeline
 from tabs.install.install_huberts import install_hubert_tab
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")

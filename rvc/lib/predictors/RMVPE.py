@@ -1,10 +1,10 @@
-import torch
 import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from librosa.filters import mel
+from librosa.util import normalize, pad_center, tiny
 from scipy.signal import get_window
-from librosa.util import pad_center, tiny, normalize
 
 
 def window_sumsquare(
@@ -176,7 +176,9 @@ class ConvBlockRes(nn.Module):
 
 
 class ResEncoderBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, n_blocks=1, momentum=0.01):
+    def __init__(
+        self, in_channels, out_channels, kernel_size, n_blocks=1, momentum=0.01
+    ):
         super(ResEncoderBlock, self).__init__()
         self.conv = nn.ModuleList(
             [

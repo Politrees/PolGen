@@ -1,15 +1,15 @@
+import asyncio
 import gc
 import os
-import torch
+
+import edge_tts
+import gradio as gr
 import librosa
 import numpy as np
-import gradio as gr
 import soundfile as sf
-import edge_tts
-import asyncio
+import torch
 
-from rvc.infer.infer import Config, load_hubert, get_vc, rvc_infer
-
+from rvc.infer.infer import Config, get_vc, load_hubert, rvc_infer
 
 RVC_MODELS_DIR = os.path.join(os.getcwd(), "models")
 HUBERT_MODEL_PATH = os.path.join(

@@ -1,21 +1,21 @@
 import os
+
+import gradio as gr
 import librosa
 import numpy as np
-import gradio as gr
 import soundfile as sf
 from pedalboard import (
-    Pedalboard,
-    Reverb,
+    Chorus,
     Compressor,
     HighpassFilter,
-    LowShelfFilter,
     HighShelfFilter,
+    LowShelfFilter,
     NoiseGate,
-    Chorus,
+    Pedalboard,
+    Reverb,
 )
 from pedalboard.io import AudioFile
 from pydub import AudioSegment
-
 
 OUTPUT_DIR = os.path.join(os.getcwd(), "output")
 

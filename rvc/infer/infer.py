@@ -1,10 +1,12 @@
-import torch
 from multiprocessing import cpu_count
+
+import torch
 from fairseq import checkpoint_utils
 from scipy.io import wavfile
 
 from rvc.lib.algorithm.synthesizers import Synthesizer
 from rvc.lib.my_utils import load_audio
+
 from .pipeline import VC
 
 
