@@ -3,7 +3,7 @@ name: Форматировщик кода
 on:
   push:
     branches:
-      - dev/PolGen-Lite
+      - dev/PolGen
 
 jobs:
   push_format:
@@ -55,4 +55,4 @@ jobs:
           body: "Автоматическое форматирование кода с помощью black"
           title: "Автоматическое форматирование кода"
           commit-message: "Автоматическое форматирование кода с помощью black"
-          branch: formatter/PolGen-Lite
+          branch: formatter/PolGen
