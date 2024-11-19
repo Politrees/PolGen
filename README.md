@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/Bebra777228/PolGen-RVC/refs/heads/dev/PolGen-Lite/assets/logo.ico" width="100"/><img src="https://counter.seku.su/cmoe?name=PolGen&theme=r34"/><br>
+<img src="https://raw.githubusercontent.com/Bebra777228/PolGen-RVC/refs/heads/PolGen/assets/logo.ico" width="100"/><img src="https://counter.seku.su/cmoe?name=PolGen&theme=r34"/><br>
 
 # PolGen — Ваш инструмент для создания каверов и переозвучки
 
