@@ -1,4 +1,4 @@
-name: Тест ссылок
+name: Link Test
 
 on:
   push:
@@ -21,15 +21,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Проверка кода
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Настройка Python
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    - name: Установка зависимостей
+    - name: Install dependencies
       run: |
         pip install --upgrade pip==23.1
         pip install requests gdown mega.py gradio
@@ -50,6 +50,6 @@ jobs:
       run: |
         python3 -m rvc.modules.model_manager "https://mega.nz/file/vgMBFB5I#-ZUtYEvV-OImhRjs9b1UpFyE2lm-BuEbODD3N9b3sg4" "test4"
 
-    - name: Яндекс Диск
+    - name: Yandex Disk
       run: |
         python3 -m rvc.modules.model_manager "https://disk.yandex.ru/d/njvq8NEQgS2OhQ" "test5"
