@@ -1,13 +1,13 @@
 import os
 import sys
+
 import gradio as gr
 
-from tabs.welcome import welcome_tab
 from tabs.conversion.conversion import conversion_tab
 from tabs.conversion.edge_tts import edge_tts_tab
+from tabs.install.install_models import files_upload, url_download, zip_upload
 from tabs.processing.processing import processing_tab
-from tabs.install.install_models import url_download, zip_upload, files_upload
-
+from tabs.welcome import welcome_tab
 
 DEFAULT_PORT = 4000
 MAX_PORT_ATTEMPTS = 10

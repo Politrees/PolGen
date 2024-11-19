@@ -1,14 +1,14 @@
 import gradio as gr
 
-from rvc.scripts.audio_processing import process_audio
 from rvc.modules.ui_updates import (
     process_file_upload,
-    update_button_text_voc,
-    update_button_text_inst,
-    swap_visibility,
-    swap_buttons,
     show_effects,
+    swap_buttons,
+    swap_visibility,
+    update_button_text_inst,
+    update_button_text_voc,
 )
+from rvc.scripts.audio_processing import process_audio
 
 
 def processing_tab():

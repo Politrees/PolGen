@@ -1,10 +1,11 @@
 from typing import Optional
+
 import torch
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 
-from rvc.lib.algorithm.modules import WaveNet
 from rvc.lib.algorithm.commons import get_padding, init_weights
+from rvc.lib.algorithm.modules import WaveNet
 
 LRELU_SLOPE = 0.1
 
