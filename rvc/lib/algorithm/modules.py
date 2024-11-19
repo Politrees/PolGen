@@ -1,12 +1,19 @@
 import torch
-from torch import nn
-from torch.nn.utils.weight_norm import remove_weight_norm
-from torch.nn.utils.parametrizations import weight_norm
-
-from .commons import fused_add_tanh_sigmoid_multiply
+from rvc.lib.algorithm.commons import fused_add_tanh_sigmoid_multiply
 
 
-class WaveNet(nn.Module):
+class WaveNet(torch.nn.Module):
+    """WaveNet residual blocks as used in WaveGlow
+
+    Args:
+        hidden_channels (int): Number of hidden channels.
+        kernel_size (int): Size of the convolutional kernel.
+        dilation_rate (int): Dilation rate of the convolution.
+        n_layers (int): Number of convolutional layers.
+        gin_channels (int, optional): Number of conditioning channels. Defaults to 0.
+        p_dropout (float, optional): Dropout probability. Defaults to 0.
+    """
+
     def __init__(
         self,
         hidden_channels,
@@ -25,37 +32,53 @@ class WaveNet(nn.Module):
         self.gin_channels = gin_channels
         self.p_dropout = p_dropout
 
-        self.in_layers = nn.ModuleList()
-        self.res_skip_layers = nn.ModuleList()
-        self.drop = nn.Dropout(p_dropout)
+        self.in_layers = torch.nn.ModuleList()
+        self.res_skip_layers = torch.nn.ModuleList()
+        self.drop = torch.nn.Dropout(p_dropout)
 
         if gin_channels != 0:
-            cond_layer = nn.Conv1d(gin_channels, 2 * hidden_channels * n_layers, 1)
-            self.cond_layer = weight_norm(cond_layer, name="weight")
+            cond_layer = torch.nn.Conv1d(
+                gin_channels, 2 * hidden_channels * n_layers, 1
+            )
+            self.cond_layer = torch.nn.utils.parametrizations.weight_norm(
+                cond_layer, name="weight"
+            )
 
         dilations = [dilation_rate**i for i in range(n_layers)]
         paddings = [(kernel_size * d - d) // 2 for d in dilations]
 
         for i in range(n_layers):
-            in_layer = nn.Conv1d(
+            in_layer = torch.nn.Conv1d(
                 hidden_channels,
                 2 * hidden_channels,
                 kernel_size,
                 dilation=dilations[i],
                 padding=paddings[i],
             )
-            in_layer = weight_norm(in_layer, name="weight")
+            in_layer = torch.nn.utils.parametrizations.weight_norm(
+                in_layer, name="weight"
+            )
             self.in_layers.append(in_layer)
 
             res_skip_channels = (
                 hidden_channels if i == n_layers - 1 else 2 * hidden_channels
             )
 
-            res_skip_layer = nn.Conv1d(hidden_channels, res_skip_channels, 1)
-            res_skip_layer = weight_norm(res_skip_layer, name="weight")
+            res_skip_layer = torch.nn.Conv1d(hidden_channels, res_skip_channels, 1)
+            res_skip_layer = torch.nn.utils.parametrizations.weight_norm(
+                res_skip_layer, name="weight"
+            )
             self.res_skip_layers.append(res_skip_layer)
 
     def forward(self, x, x_mask, g=None, **kwargs):
+        """Forward pass.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, hidden_channels, time_steps).
+            x_mask (torch.Tensor): Mask tensor of shape (batch_size, 1, time_steps).
+            g (torch.Tensor, optional): Conditioning tensor of shape (batch_size, gin_channels, time_steps).
+                Defaults to None.
+        """
         output = torch.zeros_like(x)
         n_channels_tensor = torch.IntTensor([self.hidden_channels])
 
@@ -71,7 +94,6 @@ class WaveNet(nn.Module):
                 g_l = torch.zeros_like(x_in)
 
             acts = fused_add_tanh_sigmoid_multiply(x_in, g_l, n_channels_tensor)
-
             acts = self.drop(acts)
 
             res_skip_acts = self.res_skip_layers[i](acts)
@@ -84,9 +106,10 @@ class WaveNet(nn.Module):
         return output * x_mask
 
     def remove_weight_norm(self):
+        """Remove weight normalization from the module."""
         if self.gin_channels != 0:
-            remove_weight_norm(self.cond_layer)
+            torch.nn.utils.remove_weight_norm(self.cond_layer)
         for l in self.in_layers:
-            remove_weight_norm(l)
+            torch.nn.utils.remove_weight_norm(l)
         for l in self.res_skip_layers:
-            remove_weight_norm(l)
+            torch.nn.utils.remove_weight_norm(l)

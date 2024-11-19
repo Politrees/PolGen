@@ -1,20 +1,18 @@
-import torch
-from torch import nn
-from torch.nn import functional as F
-from torch.nn.utils.weight_norm import remove_weight_norm
-from torch.nn.utils.parametrizations import weight_norm
 from typing import Optional
+import torch
+from torch.nn.utils import remove_weight_norm
+from torch.nn.utils.parametrizations import weight_norm
 
-from .commons import get_padding, init_weights
-from .modules import WaveNet
-
+from rvc.lib.algorithm.modules import WaveNet
+from rvc.lib.algorithm.commons import get_padding, init_weights
 
 LRELU_SLOPE = 0.1
 
 
+# Helper functions
 def create_conv1d_layer(channels, kernel_size, dilation):
     return weight_norm(
-        nn.Conv1d(
+        torch.nn.Conv1d(
             channels,
             channels,
             kernel_size,
@@ -29,24 +27,24 @@ def apply_mask(tensor, mask):
     return tensor * mask if mask is not None else tensor
 
 
-class ResBlockBase(nn.Module):
+class ResBlockBase(torch.nn.Module):
     def __init__(self, channels, kernel_size, dilations):
         super(ResBlockBase, self).__init__()
-        self.convs1 = nn.ModuleList(
+        self.convs1 = torch.nn.ModuleList(
             [create_conv1d_layer(channels, kernel_size, d) for d in dilations]
         )
         self.convs1.apply(init_weights)
 
-        self.convs2 = nn.ModuleList(
+        self.convs2 = torch.nn.ModuleList(
             [create_conv1d_layer(channels, kernel_size, 1) for _ in dilations]
         )
         self.convs2.apply(init_weights)
 
     def forward(self, x, x_mask=None):
         for c1, c2 in zip(self.convs1, self.convs2):
-            xt = F.leaky_relu(x, LRELU_SLOPE)
+            xt = torch.nn.functional.leaky_relu(x, LRELU_SLOPE)
             xt = apply_mask(xt, x_mask)
-            xt = F.leaky_relu(c1(xt), LRELU_SLOPE)
+            xt = torch.nn.functional.leaky_relu(c1(xt), LRELU_SLOPE)
             xt = apply_mask(xt, x_mask)
             xt = c2(xt)
             x = xt + x
@@ -67,19 +65,19 @@ class ResBlock2(ResBlockBase):
         super(ResBlock2, self).__init__(channels, kernel_size, dilation)
 
 
-class Log(nn.Module):
-    def forward(self, x, x_mask, reverse=False, **kwargs):
-        if not reverse:
-            y = torch.log(torch.clamp_min(x, 1e-5)) * x_mask
-            logdet = torch.sum(-y, [1, 2])
-            return y, logdet
-        else:
-            x = torch.exp(x) * x_mask
-            return x
+class Flip(torch.nn.Module):
+    """Flip module for flow-based models.
 
+    This module flips the input along the time dimension.
+    """
 
-class Flip(nn.Module):
     def forward(self, x, *args, reverse=False, **kwargs):
+        """Forward pass.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+            reverse (bool, optional): Whether to reverse the operation. Defaults to False.
+        """
         x = torch.flip(x, [1])
         if not reverse:
             logdet = torch.zeros(x.size(0)).to(dtype=x.dtype, device=x.device)
@@ -88,25 +86,19 @@ class Flip(nn.Module):
             return x
 
 
-class ElementwiseAffine(nn.Module):
-    def __init__(self, channels):
-        super().__init__()
-        self.channels = channels
-        self.m = nn.Parameter(torch.zeros(channels, 1))
-        self.logs = nn.Parameter(torch.zeros(channels, 1))
+class ResidualCouplingBlock(torch.nn.Module):
+    """Residual Coupling Block for normalizing flow.
 
-    def forward(self, x, x_mask, reverse=False, **kwargs):
-        if not reverse:
-            y = self.m + torch.exp(self.logs) * x
-            y = y * x_mask
-            logdet = torch.sum(self.logs * x_mask, [1, 2])
-            return y, logdet
-        else:
-            x = (x - self.m) * torch.exp(-self.logs) * x_mask
-            return x
+    Args:
+        channels (int): Number of channels in the input.
+        hidden_channels (int): Number of hidden channels in the coupling layer.
+        kernel_size (int): Kernel size of the convolutional layers.
+        dilation_rate (int): Dilation rate of the convolutional layers.
+        n_layers (int): Number of layers in the coupling layer.
+        n_flows (int, optional): Number of coupling layers in the block. Defaults to 4.
+        gin_channels (int, optional): Number of channels for the global conditioning input. Defaults to 0.
+    """
 
-
-class ResidualCouplingBlock(nn.Module):
     def __init__(
         self,
         channels,
@@ -126,7 +118,7 @@ class ResidualCouplingBlock(nn.Module):
         self.n_flows = n_flows
         self.gin_channels = gin_channels
 
-        self.flows = nn.ModuleList()
+        self.flows = torch.nn.ModuleList()
         for i in range(n_flows):
             self.flows.append(
                 ResidualCouplingLayer(
@@ -157,22 +149,37 @@ class ResidualCouplingBlock(nn.Module):
         return x
 
     def remove_weight_norm(self):
+        """Removes weight normalization from the coupling layers."""
         for i in range(self.n_flows):
             self.flows[i * 2].remove_weight_norm()
 
     def __prepare_scriptable__(self):
+        """Prepares the module for scripting."""
         for i in range(self.n_flows):
             for hook in self.flows[i * 2]._forward_pre_hooks.values():
                 if (
                     hook.__module__ == "torch.nn.utils.parametrizations.weight_norm"
-                    and hook.__class__.__name__ == "_WeightNorm"
+                    and hook.__class__.__name__ == "WeightNorm"
                 ):
-                    remove_weight_norm(self.flows[i * 2])
+                    torch.nn.utils.remove_weight_norm(self.flows[i * 2])
 
         return self
 
 
-class ResidualCouplingLayer(nn.Module):
+class ResidualCouplingLayer(torch.nn.Module):
+    """Residual coupling layer for flow-based models.
+
+    Args:
+        channels (int): Number of channels.
+        hidden_channels (int): Number of hidden channels.
+        kernel_size (int): Size of the convolutional kernel.
+        dilation_rate (int): Dilation rate of the convolution.
+        n_layers (int): Number of convolutional layers.
+        p_dropout (float, optional): Dropout probability. Defaults to 0.
+        gin_channels (int, optional): Number of conditioning channels. Defaults to 0.
+        mean_only (bool, optional): Whether to use mean-only coupling. Defaults to False.
+    """
+
     def __init__(
         self,
         channels,
@@ -194,7 +201,7 @@ class ResidualCouplingLayer(nn.Module):
         self.half_channels = channels // 2
         self.mean_only = mean_only
 
-        self.pre = nn.Conv1d(self.half_channels, hidden_channels, 1)
+        self.pre = torch.nn.Conv1d(self.half_channels, hidden_channels, 1)
         self.enc = WaveNet(
             hidden_channels,
             kernel_size,
@@ -203,11 +210,22 @@ class ResidualCouplingLayer(nn.Module):
             p_dropout=p_dropout,
             gin_channels=gin_channels,
         )
-        self.post = nn.Conv1d(hidden_channels, self.half_channels * (2 - mean_only), 1)
+        self.post = torch.nn.Conv1d(
+            hidden_channels, self.half_channels * (2 - mean_only), 1
+        )
         self.post.weight.data.zero_()
         self.post.bias.data.zero_()
 
     def forward(self, x, x_mask, g=None, reverse=False):
+        """Forward pass.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, channels, time_steps).
+            x_mask (torch.Tensor): Mask tensor of shape (batch_size, 1, time_steps).
+            g (torch.Tensor, optional): Conditioning tensor of shape (batch_size, gin_channels, time_steps).
+                Defaults to None.
+            reverse (bool, optional): Whether to reverse the operation. Defaults to False.
+        """
         x0, x1 = torch.split(x, [self.half_channels] * 2, 1)
         h = self.pre(x0) * x_mask
         h = self.enc(h, x_mask, g=g)
@@ -229,4 +247,5 @@ class ResidualCouplingLayer(nn.Module):
             return x
 
     def remove_weight_norm(self):
+        """Remove weight normalization from the module."""
         self.enc.remove_weight_norm()

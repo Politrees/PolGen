@@ -1,16 +1,41 @@
 import torch
-from torch import nn
-from torch.nn.utils.weight_norm import remove_weight_norm
 from typing import Optional
 
-from .commons import slice_segments, rand_slice_segments
-from .encoders import TextEncoder, PosteriorEncoder
-from .generators import Generator
-from .nsf import GeneratorNSF
-from .residuals import ResidualCouplingBlock
+from rvc.lib.algorithm.nsf import GeneratorNSF
+from rvc.lib.algorithm.generators import Generator
+from rvc.lib.algorithm.commons import slice_segments, rand_slice_segments
+from rvc.lib.algorithm.residuals import ResidualCouplingBlock
+from rvc.lib.algorithm.encoders import TextEncoder, PosteriorEncoder
 
 
-class Synthesizer(nn.Module):
+class Synthesizer(torch.nn.Module):
+    """
+    Base Synthesizer model.
+
+    Args:
+        spec_channels (int): Number of channels in the spectrogram.
+        segment_size (int): Size of the audio segment.
+        inter_channels (int): Number of channels in the intermediate layers.
+        hidden_channels (int): Number of channels in the hidden layers.
+        filter_channels (int): Number of channels in the filter layers.
+        n_heads (int): Number of attention heads.
+        n_layers (int): Number of layers in the encoder.
+        kernel_size (int): Size of the convolution kernel.
+        p_dropout (float): Dropout probability.
+        resblock (str): Type of residual block.
+        resblock_kernel_sizes (list): Kernel sizes for the residual blocks.
+        resblock_dilation_sizes (list): Dilation sizes for the residual blocks.
+        upsample_rates (list): Upsampling rates for the decoder.
+        upsample_initial_channel (int): Number of channels in the initial upsampling layer.
+        upsample_kernel_sizes (list): Kernel sizes for the upsampling layers.
+        spk_embed_dim (int): Dimension of the speaker embedding.
+        gin_channels (int): Number of channels in the global conditioning vector.
+        sr (int): Sampling rate of the audio.
+        use_f0 (bool): Whether to use F0 information.
+        text_enc_hidden_dim (int): Hidden dimension for the text encoder.
+        kwargs: Additional keyword arguments.
+    """
+
     def __init__(
         self,
         spec_channels,
@@ -32,7 +57,7 @@ class Synthesizer(nn.Module):
         gin_channels,
         sr,
         use_f0,
-        input_dim=768,
+        text_enc_hidden_dim=768,
         **kwargs
     ):
         super(Synthesizer, self).__init__()
@@ -63,7 +88,7 @@ class Synthesizer(nn.Module):
             n_layers,
             kernel_size,
             float(p_dropout),
-            input_dim,
+            text_enc_hidden_dim,
             f0=use_f0,
         )
 
@@ -104,9 +129,10 @@ class Synthesizer(nn.Module):
         self.flow = ResidualCouplingBlock(
             inter_channels, hidden_channels, 5, 1, 3, gin_channels=gin_channels
         )
-        self.emb_g = nn.Embedding(self.spk_embed_dim, gin_channels)
+        self.emb_g = torch.nn.Embedding(self.spk_embed_dim, gin_channels)
 
     def remove_weight_norm(self):
+        """Removes weight normalization from the model."""
         self.dec.remove_weight_norm()
         self.flow.remove_weight_norm()
         self.enc_q.remove_weight_norm()
@@ -115,22 +141,22 @@ class Synthesizer(nn.Module):
         for hook in self.dec._forward_pre_hooks.values():
             if (
                 hook.__module__ == "torch.nn.utils.parametrizations.weight_norm"
-                and hook.__class__.__name__ == "_WeightNorm"
+                and hook.__class__.__name__ == "WeightNorm"
             ):
-                remove_weight_norm(self.dec)
+                torch.nn.utils.remove_weight_norm(self.dec)
         for hook in self.flow._forward_pre_hooks.values():
             if (
                 hook.__module__ == "torch.nn.utils.parametrizations.weight_norm"
-                and hook.__class__.__name__ == "_WeightNorm"
+                and hook.__class__.__name__ == "WeightNorm"
             ):
-                remove_weight_norm(self.flow)
+                torch.nn.utils.remove_weight_norm(self.flow)
         if hasattr(self, "enc_q"):
             for hook in self.enc_q._forward_pre_hooks.values():
                 if (
                     hook.__module__ == "torch.nn.utils.parametrizations.weight_norm"
-                    and hook.__class__.__name__ == "_WeightNorm"
+                    and hook.__class__.__name__ == "WeightNorm"
                 ):
-                    remove_weight_norm(self.enc_q)
+                    torch.nn.utils.remove_weight_norm(self.enc_q)
         return self
 
     @torch.jit.ignore
@@ -144,6 +170,18 @@ class Synthesizer(nn.Module):
         y_lengths: torch.Tensor = None,
         ds: Optional[torch.Tensor] = None,
     ):
+        """
+        Forward pass of the model.
+
+        Args:
+            phone (torch.Tensor): Phoneme sequence.
+            phone_lengths (torch.Tensor): Lengths of the phoneme sequences.
+            pitch (torch.Tensor, optional): Pitch sequence.
+            pitchf (torch.Tensor, optional): Fine-grained pitch sequence.
+            y (torch.Tensor, optional): Target spectrogram.
+            y_lengths (torch.Tensor, optional): Lengths of the target spectrograms.
+            ds (torch.Tensor, optional): Speaker embedding. Defaults to None.
+        """
         g = self.emb_g(ds).unsqueeze(-1)
         m_p, logs_p, x_mask = self.enc_p(phone, pitch, phone_lengths)
         if y is not None:
@@ -169,6 +207,17 @@ class Synthesizer(nn.Module):
         sid: torch.Tensor = None,
         rate: Optional[torch.Tensor] = None,
     ):
+        """
+        Inference of the model.
+
+        Args:
+            phone (torch.Tensor): Phoneme sequence.
+            phone_lengths (torch.Tensor): Lengths of the phoneme sequences.
+            pitch (torch.Tensor, optional): Pitch sequence.
+            nsff0 (torch.Tensor, optional): Fine-grained pitch sequence.
+            sid (torch.Tensor): Speaker embedding.
+            rate (torch.Tensor, optional): Rate for time-stretching. Defaults to None.
+        """
         g = self.emb_g(sid).unsqueeze(-1)
         m_p, logs_p, x_mask = self.enc_p(phone, pitch, phone_lengths)
         z_p = (m_p + torch.exp(logs_p) * torch.randn_like(m_p) * 0.66666) * x_mask
