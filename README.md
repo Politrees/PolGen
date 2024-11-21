@@ -27,8 +27,8 @@
 > Для лучшего опыта я настоятельно рекомендую использовать предварительно скомпилированную версию. Самостоятельная компиляция кода может привести к нестабильности.
 > 1. Скачайте ZIP-архив и распакуйте содержимое в любое удобное место - [Репозиторий](https://huggingface.co/Politrees/PolGen/tree/main) / [Скачать](https://huggingface.co/Politrees/PolGen/resolve/main/PolGen-v1.2.0-FIX.zip?download=true)
 > 2. Запустите файл:
-        - **Windows**: `PolGen.exe`
-        - **Linux**: `install-run.sh`
+>    - **Windows**: `PolGen.exe`
+>    - **Linux**: `install-run.sh`
 
 ---
 
