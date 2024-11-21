@@ -5,7 +5,6 @@ import gradio as gr
 from rvc.modules.model_manager import get_folders, update_models_list
 from rvc.modules.ui_updates import show_hop_slider
 from rvc.scripts.edge_tts_conversion import edge_tts_pipeline
-from tabs.install.install_huberts import install_hubert_tab
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")
 voice_models = get_folders(rvc_models_dir)
@@ -183,8 +182,6 @@ def edge_tts_tab():
                         value=1100,
                         maximum=16000,
                     )
-
-    install_hubert_tab()
 
     ref_btn.click(update_models_list, None, outputs=rvc_model)
     generate_btn.click(

@@ -11,7 +11,6 @@ from rvc.modules.ui_updates import (
     update_button_text,
 )
 from rvc.scripts.voice_conversion import voice_pipeline
-from tabs.install.install_huberts import install_hubert_tab
 
 rvc_models_dir = os.path.join(os.getcwd(), "models")
 voice_models = get_folders(rvc_models_dir)
@@ -183,8 +182,6 @@ def conversion_tab():
                         value=1100,
                         maximum=16000,
                     )
-
-    install_hubert_tab()
 
     ref_btn.click(update_models_list, None, outputs=rvc_model)
     generate_btn.click(
