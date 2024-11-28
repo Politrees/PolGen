@@ -66,9 +66,13 @@ def zip_upload():
                         info="Дайте вашей загружаемой модели уникальное имя, "
                         "отличное от других голосовых моделей.",
                     )
-                    model_upload_button = gr.Button("Загрузить модель", variant="primary")
+                    model_upload_button = gr.Button(
+                        "Загрузить модель", variant="primary"
+                    )
 
-        local_upload_output_message = gr.Text(label="Сообщение вывода", interactive=False)
+        local_upload_output_message = gr.Text(
+            label="Сообщение вывода", interactive=False
+        )
         model_upload_button.click(
             upload_zip_file,
             inputs=[zip_file, local_model_name],
@@ -93,7 +97,9 @@ def files_upload():
                     info="Дайте вашей загружаемой модели уникальное имя, "
                     "отличное от других голосовых моделей.",
                 )
-                separate_upload_button = gr.Button("Загрузить модель", variant="primary")
+                separate_upload_button = gr.Button(
+                    "Загрузить модель", variant="primary"
+                )
 
         separate_upload_output_message = gr.Text(
             label="Сообщение вывода", interactive=False
