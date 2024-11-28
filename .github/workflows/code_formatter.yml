@@ -3,7 +3,7 @@ name: Форматировщик кода
 on:
   push:
     branches:
-      - dev/PolGen-Lite
+      - dev/PolGen
 
 jobs:
   push_format:

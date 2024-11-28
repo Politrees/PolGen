@@ -3,14 +3,14 @@ name: Тест ссылок
 on:
   push:
     branches:
-      - dev/PolGen-Lite
+      - dev/PolGen
     paths:
       - '.github/workflows/test_links.yml'
       - 'rvc/modules/download_source.py'
       - 'rvc/modules/model_manager.py'
   pull_request:
     branches:
-      - dev/PolGen-Lite
+      - dev/PolGen
     paths:
       - '.github/workflows/test_links.yml'
       - 'rvc/modules/download_source.py'

@@ -3,10 +3,10 @@ name: Тест CLI скриптов
 on:
   push:
     branches:
-      - dev/PolGen-Lite
+      - dev/PolGen
   pull_request:
     branches:
-      - dev/PolGen-Lite
+      - dev/PolGen
 
 jobs:
   rvc_cli:
