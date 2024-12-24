@@ -43,7 +43,7 @@ huggingface-hub==0.24.6
 hydra-core==1.0.7
 idna==3.8
 importlib-resources==6.4.5
-jinja2==3.1.4
+jinja2==3.1.5
 joblib==1.4.2
 kiwisolver==1.4.7
 lazy-loader==0.4
@@ -81,7 +81,7 @@ pydub==0.25.1
 pygments==2.18.0
 pyparsing==3.1.4
 python-dateutil==2.9.0.post0
-python-multipart==0.0.9
+python-multipart==0.0.18
 pytz==2024.1
 pywin32==306
 pyworld==0.3.4
