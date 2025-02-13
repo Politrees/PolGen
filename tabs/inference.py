@@ -11,7 +11,7 @@ OUTPUT_FORMAT = ["wav", "flac", "mp3", "ogg", "opus", "m4a", "aiff", "ac3"]
 def get_folders(models_dir):
     return sorted(
         (item for item in os.listdir(models_dir) if os.path.isdir(os.path.join(models_dir, item))),
-        key=lambda x: [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', x)]
+        key=lambda x: [int(text) if text.isdigit() else text.lower() for text in re.split("([0-9]+)", x)],
     )
 
 
