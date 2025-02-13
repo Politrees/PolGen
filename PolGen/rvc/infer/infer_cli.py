@@ -4,7 +4,7 @@ configure_logging(True, False, "WARNING")
 
 import argparse
 
-from rvc.infer.infer import rvc_infer
+from PolGen.rvc.infer.infer import rvc_infer
 
 
 def create_parser():

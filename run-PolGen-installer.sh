@@ -110,9 +110,9 @@ install_ffmpeg_flatpak() {
 
 installing_necessary_models() {
     echo "Checking for required models..."
-    HUBERT_BASE="$PRINCIPAL/rvc/models/embedders/hubert_base.pt"
-    FCPE="$PRINCIPAL/rvc/models/predictors/fcpe.pt"
-    RMVPE="$PRINCIPAL/rvc/models/predictors/rmvpe.pt"
+    HUBERT_BASE="$PRINCIPAL/PolGen/rvc/models/embedders/hubert_base.pt"
+    FCPE="$PRINCIPAL/PolGen/rvc/models/predictors/fcpe.pt"
+    RMVPE="$PRINCIPAL/PolGen/rvc/models/predictors/rmvpe.pt"
 
     if [ -f "$HUBERT_BASE" ] && [ -f "$FCPE" ] && [ -f "$RMVPE" ]; then
         echo "All required models are installed."

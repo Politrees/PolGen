@@ -9,15 +9,15 @@ from fairseq import checkpoint_utils
 from pydub import AudioSegment
 from scipy.io import wavfile
 
-from rvc.infer.config import Config
-from rvc.infer.pipeline import VC
-from rvc.lib.algorithm.synthesizers import Synthesizer
-from rvc.lib.my_utils import load_audio
+from PolGen.rvc.infer.config import Config
+from PolGen.rvc.infer.pipeline import VC
+from PolGen.rvc.lib.algorithm.synthesizers import Synthesizer
+from PolGen.rvc.lib.my_utils import load_audio
 
 # Определяем пути к папкам и файлам (константы)
 RVC_MODELS_DIR = os.path.join(os.getcwd(), "models", "RVC_models")
 OUTPUT_DIR = os.path.join(os.getcwd(), "output", "RVC_output")
-HUBERT_BASE_PATH = os.path.join(os.getcwd(), "rvc", "models", "embedders", "hubert_base.pt")
+HUBERT_BASE_PATH = os.path.join(os.getcwd(), "PolGen", "rvc", "models", "embedders", "hubert_base.pt")
 
 # Создаем папки, если их нет
 os.makedirs(RVC_MODELS_DIR, exist_ok=True)

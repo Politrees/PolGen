@@ -10,11 +10,11 @@ import torchcrepe
 from scipy import signal
 from torch import Tensor
 
-from rvc.lib.predictors.FCPE import FCPEF0Predictor
-from rvc.lib.predictors.RMVPE import RMVPE0Predictor
+from PolGen.rvc.lib.predictors.FCPE import FCPEF0Predictor
+from PolGen.rvc.lib.predictors.RMVPE import RMVPE0Predictor
 
-RMVPE_PATH = os.path.join(os.getcwd(), "rvc", "models", "predictors", "rmvpe.pt")
-FCPE_PATH = os.path.join(os.getcwd(), "rvc", "models", "predictors", "fcpe.pt")
+RMVPE_PATH = os.path.join(os.getcwd(), "PolGen", "rvc", "models", "predictors", "rmvpe.pt")
+FCPE_PATH = os.path.join(os.getcwd(), "PolGen", "rvc", "models", "predictors", "fcpe.pt")
 
 # Фильтр Баттерворта для высоких частот
 bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)

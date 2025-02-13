@@ -97,9 +97,9 @@ exit /b 0
 :installing_necessary_models
 cls
 echo Checking for required models...
-set "hubert_base=%PRINCIPAL%\rvc\models\embedders\hubert_base.pt"
-set "fcpe=%PRINCIPAL%\rvc\models\predictors\fcpe.pt"
-set "rmvpe=%PRINCIPAL%\rvc\models\predictors\rmvpe.pt"
+set "hubert_base=%PRINCIPAL%\PolGen\rvc\models\embedders\hubert_base.pt"
+set "fcpe=%PRINCIPAL%\PolGen\rvc\models\predictors\fcpe.pt"
+set "rmvpe=%PRINCIPAL%\PolGen\rvc\models\predictors\rmvpe.pt"
 
 if exist "%hubert_base%" (
     if exist "%fcpe%" (

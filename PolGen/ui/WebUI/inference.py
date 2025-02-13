@@ -3,7 +3,7 @@ import re
 
 import gradio as gr
 
-from rvc.infer.infer import RVC_MODELS_DIR, rvc_infer
+from PolGen.rvc.infer.infer import RVC_MODELS_DIR, rvc_infer
 
 OUTPUT_FORMAT = ["wav", "flac", "mp3", "ogg", "opus", "m4a", "aiff", "ac3"]
 
