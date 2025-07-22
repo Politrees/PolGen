@@ -118,6 +118,8 @@ def inference_tab():
             )
             converted_voice = gr.Audio(
                 label="Преобразованный голос",
+                show_download_button=True,
+                show_share_button=False,
                 interactive=False,
                 visible=True,
                 scale=9,
@@ -251,7 +253,13 @@ def edge_tts_tab():
                             interactive=True,
                             visible=False,
                         )
-            synth_voice = gr.Audio(label="Синтзированный TTS голос")
+            synth_voice = gr.Audio(
+                label="Синтзированный TTS голос",
+                show_download_button=True,
+                show_share_button=False,
+                interactive=False,
+                visible=True,
+            )
 
     with gr.Accordion("Настройки синтеза речи", open=False):
         with gr.Group():
@@ -300,6 +308,8 @@ def edge_tts_tab():
             )
             converted_synth_voice = gr.Audio(
                 label="Преобразованный TTS голос",
+                show_download_button=True,
+                show_share_button=False,
                 interactive=False,
                 visible=True,
                 scale=9,

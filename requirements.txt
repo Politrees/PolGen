@@ -1,7 +1,7 @@
 # Основные библиотеки
-gradio==5.35.0
 requests
 numpy<2
+gradio
 einops
 mega-x
 gdown
