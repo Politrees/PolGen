@@ -2,6 +2,10 @@ name: Code Linter
 
 on:
   push:
+    paths:
+      - '**/*.py'
+      - '**/*.txt'
+      - '.github/workflows/code_linter.yml'
 
 jobs:
   lint:

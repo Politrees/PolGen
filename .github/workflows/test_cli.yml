@@ -2,11 +2,15 @@ name: CLI Scripts Test
 
 on:
   push:
-    branches:
-      - '*'
+    paths:
+      - '**/*.py'
+      - '**/*.txt'
+      - '.github/workflows/test_cli.yml'
   pull_request:
-    branches:
-      - '*'
+    paths:
+      - '**/*.py'
+      - '**/*.txt'
+      - '.github/workflows/test_cli.yml'
 
 jobs:
   rvc_cli:
