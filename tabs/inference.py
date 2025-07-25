@@ -46,13 +46,10 @@ def inference_tab():
                         interactive=True,
                         visible=True,
                     )
-                autopitch_threshold = gr.Slider(
-                    minimum=155.0,
-                    maximum=255.0,
-                    step=100.0,
+                autopitch_threshold = gr.Radio(
                     value=155.0,
-                    label="Регулировка высоты тона",
-                    info="155.0 — Мужская модель | 255.0 — Женская модель",
+                    choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
+                    show_label=False,
                     interactive=True,
                     visible=False,
                 )
@@ -224,13 +221,10 @@ def edge_tts_tab():
                             visible=True,
                         )
                     with gr.Row():
-                        autopitch_threshold = gr.Slider(
-                            minimum=155.0,
-                            maximum=255.0,
-                            step=100.0,
+                        autopitch_threshold = gr.Radio(
                             value=155.0,
-                            label="Регулировка высоты тона",
-                            info="155.0 — Мужская модель | 255.0 — Женская модель",
+                            choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
+                            show_label=False,
                             interactive=True,
                             visible=False,
                         )
