@@ -29,7 +29,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade black isort autoflake
+          pip install --no-cache-dir uv
+          uv pip install --no-cache-dir -U black isort autoflake -q --system
 
       - name: Run autoflake
         run: autoflake --in-place --recursive .

@@ -34,6 +34,7 @@ def create_parser():
     base.add_argument("--autopitch_threshold", type=float, default=155.0, help="155.0 — Мужская модель | 255.0 — Женская модель")
     base.add_argument("--autotune", type=lambda x: bool(strtobool(x)), default=False, help="Коррекция высоты тона")
     base.add_argument("--autotune_strength", type=float, default=1.0, help="Сила автотюна")
+    base.add_argument("--upscale", type=lambda x: bool(strtobool(x)), default=False, help="Улучшение качества звука")
     base.add_argument("--output_format", type=str, default="mp3", help="Формат выходного файла")
 
     # Главный парсер с субкомандами
@@ -72,6 +73,7 @@ def main():
         "autopitch_threshold": args.autopitch_threshold,
         "autotune": args.autotune,
         "autotune_strength": args.autotune_strength,
+        "audio_upscaling": args.upscale,
         "output_format": args.output_format,
     }
 

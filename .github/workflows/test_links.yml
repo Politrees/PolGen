@@ -27,7 +27,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install requests gdown mega-x gradio
+        pip install --no-cache-dir uv
+        uv pip install --no-cache-dir -U requests gdown mega-x gradio -q --system
 
     - name: Google Drive
       run: |
