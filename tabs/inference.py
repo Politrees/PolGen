@@ -46,6 +46,12 @@ def inference_tab():
                         interactive=True,
                         visible=True,
                     )
+                audio_upscaling = gr.Checkbox(
+                    label="Улучшить качество аудио (долгая обработка)",
+                    value=False,
+                    interactive=True,
+                    visible=True,
+                )
                 autopitch_threshold = gr.Radio(
                     value=155.0,
                     choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
@@ -168,6 +174,7 @@ def inference_tab():
             autopitch_threshold,
             autotune,
             autotune_strength,
+            audio_upscaling,
             output_format,
         ],
         outputs=[converted_voice],
@@ -217,6 +224,12 @@ def edge_tts_tab():
                         autotune = gr.Checkbox(
                             value=False,
                             label="Коррекция высоты тона (АвтоТюн)",
+                            interactive=True,
+                            visible=True,
+                        )
+                        audio_upscaling = gr.Checkbox(
+                            label="Улучшить качество аудио (долгая обработка)",
+                            value=False,
                             interactive=True,
                             visible=True,
                         )
@@ -354,6 +367,7 @@ def edge_tts_tab():
             tts_rate,
             tts_volume,
             tts_pitch,
+            audio_upscaling,
         ],
         outputs=[synth_voice, converted_synth_voice],
     )

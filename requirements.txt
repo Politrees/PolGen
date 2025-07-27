@@ -11,9 +11,11 @@ tqdm
 # Библиотеки для работы с аудио и видео
 ffmpeg-python>=0.2.0
 PolUVR[gpu]
+PolFlashSR
 torchcrepe
 torchfcpe
 edge-tts
+pydub
 
 # Машинное обучение и нейронные сети
 torch==2.7.1
