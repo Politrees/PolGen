@@ -12,13 +12,13 @@ def download_file(url, zip_name, progress=gr.Progress(track_tqdm=True)):
     try:
         parsed_url = urlparse(url)
         hostname = parsed_url.hostname
-        if hostname == "drive.google.com":
+        if hostname in "drive.google.com":
             download_from_google_drive(url, zip_name, progress)
-        elif hostname == "huggingface.co":
+        elif hostname in "huggingface.co":
             download_from_huggingface(url, zip_name, progress)
-        elif hostname == "pixeldrain.com":
+        elif hostname in "pixeldrain.com":
             download_from_pixeldrain(url, zip_name, progress)
-        elif hostname == "mega.nz":
+        elif hostname in "mega.nz":
             download_from_mega(url, zip_name, progress)
         elif hostname in {"disk.yandex.ru", "yadi.sk"}:
             download_from_yandex(url, zip_name, progress)
@@ -75,7 +75,10 @@ def download_from_yandex(url, zip_name, progress):
 
 # Скачивание с Dropbox
 def download_from_dropbox(url, zip_name, progress):
-    progress(0.2, desc="[~] Загрузка модели с Dropbox...")
-    # Преобразуем стандартную ссылку Dropbox в прямую ссылку для скачивания
-    download_url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace("?dl=0", "")
-    urllib.request.urlretrieve(download_url, zip_name)
+    progress(0.5, desc="[~] Загрузка модели с Dropbox...")
+    # Преобразование стандартной ссылки в прямую для скачивания
+    if "?dl=0" in url:
+        url = url.replace("?dl=0", "?dl=1")
+    elif "?dl=1" not in url:
+        url += "?dl=1" if "?" not in url else "&dl=1"
+    urllib.request.urlretrieve(url, zip_name)
