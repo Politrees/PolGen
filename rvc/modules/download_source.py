@@ -22,7 +22,7 @@ def download_file(url, zip_name, progress=gr.Progress(track_tqdm=True)):
             download_from_mega(url, zip_name, progress)
         elif hostname in {"disk.yandex.ru", "yadi.sk"}:
             download_from_yandex(url, zip_name, progress)
-        elif hostname in "dropbox.com":
+        elif hostname in ("www.dropbox.com", "dropbox.com"):
             download_from_dropbox(url, zip_name, progress)
         else:
             raise ValueError(f"Неподдерживаемый источник: {url}")
