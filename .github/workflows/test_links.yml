@@ -31,20 +31,30 @@ jobs:
 
     - name: Google Drive
       run: |
-        python3 -m rvc.modules.model_manager "https://drive.google.com/file/d/1lVQuCq5sQXRnAb_Z6m0nKb9305aePowy/view?usp=sharing" "test1"
+        python3 -m rvc.modules.model_manager "https://drive.google.com/file/d/1LT68BM6AoR1GLZV-mMWAUV1plGCORcqn/view?usp=sharing" "test1"
+      continue-on-error: true
 
     - name: HuggingFace
       run: |
         python3 -m rvc.modules.model_manager "https://huggingface.co/Politrees/Victor_Tsoi/resolve/main/Victor_Tsoi.zip?download=true" "test2"
+      continue-on-error: true
 
     - name: Pixeldrain
       run: |
         python3 -m rvc.modules.model_manager "https://pixeldrain.com/u/mN7BsdZb" "test3"
+      continue-on-error: true
 
     - name: Mega
       run: |
         python3 -m rvc.modules.model_manager "https://mega.nz/file/vgMBFB5I#-ZUtYEvV-OImhRjs9b1UpFyE2lm-BuEbODD3N9b3sg4" "test4"
+      continue-on-error: true
 
     - name: Yandex Disk
       run: |
         python3 -m rvc.modules.model_manager "https://disk.yandex.ru/d/njvq8NEQgS2OhQ" "test5"
+      continue-on-error: true
+
+    - name: Dropbox
+      run: |
+        python3 -m rvc.modules.model_manager "https://www.dropbox.com/scl/fi/83w0xvvdkmokpzx7aoqh8/Victor_Tsoi.zip?rlkey=i6xmw8655ab49x0ix5vj16mox&st=c60rv2c5&dl=0" "test6"
+      continue-on-error: true

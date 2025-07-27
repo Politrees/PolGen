@@ -73,7 +73,8 @@ def url_zip_download(output_message):
             "<a href='https://pixeldrain.com/' target='_blank'>Pixeldrain</a>, "
             "<a href='https://drive.google.com/' target='_blank'>Google Drive</a>, "
             "<a href='https://mega.nz/' target='_blank'>Mega</a>, "
-            "<a href='https://disk.yandex.ru/' target='_blank'>Яндекс Диск</a>"
+            "<a href='https://disk.yandex.ru/' target='_blank'>Яндекс Диск, </a>"
+            "<a href='https://www.dropbox.com' target='_blank'>Dropbox</a>"
             "</h3>"
         )
         with gr.Column():

@@ -8,7 +8,7 @@ from mega import Mega
 
 
 # Универсальная функция для скачивания файла с разных источников
-def download_file(url, zip_name, progress):
+def download_file(url, zip_name, progress=gr.Progress(track_tqdm=True)):
     try:
         parsed_url = urlparse(url)
         hostname = parsed_url.hostname
@@ -22,27 +22,28 @@ def download_file(url, zip_name, progress):
             download_from_mega(url, zip_name, progress)
         elif hostname in {"disk.yandex.ru", "yadi.sk"}:
             download_from_yandex(url, zip_name, progress)
+        elif hostname in "dropbox.com":
+            download_from_dropbox(url, zip_name, progress)
         else:
-            raise ValueError(f"Неподдерживаемый источник: {url}")  # Обработка неподдерживаемых ссылок
+            raise ValueError(f"Неподдерживаемый источник: {url}")
     except Exception as e:
-        # Обрабатываем любые ошибки, возникшие при скачивании
         raise gr.Error(f"Ошибка при скачивании: {str(e)}")
 
 
-# Скачивание файла с Google Drive с помощью библиотеки gdown
+# Скачивание файла с Google Drive
 def download_from_google_drive(url, zip_name, progress):
     progress(0.5, desc="[~] Загрузка модели с Google Drive...")
     file_id = url.split("file/d/")[1].split("/")[0] if "file/d/" in url else url.split("id=")[1].split("&")[0]  # Извлекаем ID файла
     gdown.download(id=file_id, output=str(zip_name), quiet=False)
 
 
-# Скачивание файла с HuggingFace через urllib
+# Скачивание файла с HuggingFace
 def download_from_huggingface(url, zip_name, progress):
     progress(0.5, desc="[~] Загрузка модели с HuggingFace...")
     urllib.request.urlretrieve(url, zip_name)
 
 
-# Скачивание файла с Pixeldrain через API
+# Скачивание файла с Pixeldrain
 def download_from_pixeldrain(url, zip_name, progress):
     progress(0.5, desc="[~] Загрузка модели с Pixeldrain...")
     file_id = url.split("pixeldrain.com/u/")[1]  # Извлекаем ID файла
@@ -51,14 +52,14 @@ def download_from_pixeldrain(url, zip_name, progress):
         f.write(response.content)
 
 
-# Скачивание файла с Mega через библиотеку Mega
+# Скачивание файла с Mega
 def download_from_mega(url, zip_name, progress):
     progress(0.5, desc="[~] Загрузка модели с Mega...")
     m = Mega()
     m.download_url(url, dest_filename=str(zip_name))
 
 
-# Скачивание файла с Яндекс Диска через публичное API
+# Скачивание Яндекс Диска
 def download_from_yandex(url, zip_name, progress):
     progress(0.5, desc="[~] Загрузка модели с Яндекс Диска...")
     yandex_public_key = f"download?public_key={url}"  # Формируем публичный ключ
@@ -70,3 +71,11 @@ def download_from_yandex(url, zip_name, progress):
     else:
         # Обработка ошибки при получении ссылки на Яндекс Диск
         raise gr.Error(f"Ошибка при получении ссылки с Яндекс Диска: {response.status_code}")
+
+
+# Скачивание с Dropbox
+def download_from_dropbox(url, zip_name, progress):
+    progress(0.2, desc="[~] Загрузка модели с Dropbox...")
+    # Преобразуем стандартную ссылку Dropbox в прямую ссылку для скачивания
+    download_url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace("?dl=0", "")
+    urllib.request.urlretrieve(download_url, zip_name)
