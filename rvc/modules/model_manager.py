@@ -128,11 +128,15 @@ def main():
     dir_name = sys.argv[2]
 
     try:
-        # Скачивание и загрузка модели через командную строку
-        result = download_from_url(url, dir_name)
+        # Создаем "фейковый" progress-объект для консоли
+        class ConsoleProgress:
+            def __call__(self, progress, desc=""):
+                print(desc)
+
+        result = download_from_url(url, dir_name, progress=ConsoleProgress())
         print(result)
     except gr.Error as e:
-        print(f"Error: {str(e)}")
+        print(f"Ошибка: {str(e)}")
         sys.exit(1)
 
 

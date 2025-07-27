@@ -19,9 +19,17 @@
 
 PolGen поддерживает несколько способов установки моделей:
 
-- **Загрузка по ссылке на ZIP-файл**: Поддерживаемые сайты: [HuggingFace](https://huggingface.co/), [Pixeldrain](https://pixeldrain.com/), [Google Drive](https://drive.google.com/), [Mega](https://mega.nz/), [Яндекс Диск](https://disk.yandex.ru/).
-- **Загрузка ZIP-файла с устройства**: Просто перетащите ZIP-файл в программу.
-- **Загрузка .pth и .index файлов по отдельности**: Нет необходимости запаковывать файлы в ZIP архив.
+- **Загрузка по ссылке на ZIP-файл**:
+
+  | Поддерживаемые сайты |
+  |----------------------|
+  | **[HuggingFace](https://huggingface.co/), [Pixeldrain](https://pixeldrain.com/), [Dropbox](https://www.dropbox.com)** |
+  | **[Google Drive](https://drive.google.com/), [Yandex Disk](https://disk.yandex.ru/), [Mega](https://mega.nz/)** |
+
+- **Загрузка ZIP-файла с устройства**:
+  > ***Просто перетащите ZIP-файл в окно загрузки.***
+- **Загрузка .pth и .index файлов по отдельности**:
+  > ***Нет необходимости запаковывать файлы в ZIP-архив, просто перетащите один (.pth) или оба файла в окно загрузки.***
 
 ### 🗣️ Преобразование текста в речь (TTS) от Edge-TTS
 
