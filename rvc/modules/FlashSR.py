@@ -1,14 +1,14 @@
-import torch
-import numpy as np
-from TorchJaekwon.Util.UtilAudio import UtilAudio
-from TorchJaekwon.Util.UtilData import UtilData
-from tqdm import tqdm
-from FlashSR.FlashSR import FlashSR
+import glob
 import math
 import os
 from pathlib import Path
-import glob
 
+import numpy as np
+import torch
+from FlashSR.FlashSR import FlashSR
+from TorchJaekwon.Util.UtilAudio import UtilAudio
+from TorchJaekwon.Util.UtilData import UtilData
+from tqdm import tqdm
 
 FLASH_SR_DIR = os.path.join(os.getcwd(), "rvc", "models", "FlashSR")
 student_ldm_ckpt_path = os.path.join(FLASH_SR_DIR, "student_ldm.pth")
@@ -24,6 +24,7 @@ def _getWindowingArray(window_size, fade_size):
     window[:fade_size] *= fadein
     return window
 
+
 def process_audio(input_path, output_path, overlap, flashsr, device):
     audio, sr = UtilAudio.read(input_path, sample_rate=48000)
     audio = audio.to(device)
@@ -38,7 +39,7 @@ def process_audio(input_path, output_path, overlap, flashsr, device):
         audio = audio.unsqueeze(0)
 
     if audio.shape[1] > 2 * border and (border > 0):
-        audio = torch.nn.functional.pad(audio, (border, border), mode='reflect')
+        audio = torch.nn.functional.pad(audio, (border, border), mode="reflect")
 
     total_chunks = math.ceil(audio.size(1) / step)
     print(total_chunks)
@@ -52,13 +53,13 @@ def process_audio(input_path, output_path, overlap, flashsr, device):
     progress_bar = tqdm(total=total_chunks, desc="Улучшаем качество аудио...", leave=False, unit="chunk")
 
     while i < audio.shape[1]:
-        part = audio[:, i:i + C]
+        part = audio[:, i : i + C]
         length = part.shape[-1]
         if length < C:
             if length > C // 2 + 1:
-                part = torch.nn.functional.pad(input=part, pad=(0, C - length), mode='reflect')
+                part = torch.nn.functional.pad(input=part, pad=(0, C - length), mode="reflect")
             else:
-                part = torch.nn.functional.pad(input=part, pad=(0, C - length, 0, 0), mode='constant', value=0)
+                part = torch.nn.functional.pad(input=part, pad=(0, C - length, 0, 0), mode="constant", value=0)
 
         out = flashsr(part, lowpass_input=True).cpu()
 
@@ -68,8 +69,8 @@ def process_audio(input_path, output_path, overlap, flashsr, device):
         elif i + C >= audio.shape[1]:
             window[-fade_size:] = 1
 
-        result[..., i:i + length] += out[..., :length] * window[..., :length]
-        counter[..., i:i + length] += window[..., :length]
+        result[..., i : i + length] += out[..., :length] * window[..., :length]
+        counter[..., i : i + length] += window[..., :length]
 
         i += step
         progress_bar.update(1)

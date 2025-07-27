@@ -1,11 +1,11 @@
 # Установка необходимых файлов, если их нет
 from assets.model_installer import check_and_install_models
+
 check_and_install_models()
 
 import argparse
 import logging
 import os
-import sys
 import warnings
 from distutils.util import strtobool
 

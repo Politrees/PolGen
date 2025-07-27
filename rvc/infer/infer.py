@@ -14,7 +14,6 @@ from rvc.infer.config import Config
 from rvc.infer.pipeline import VC
 from rvc.lib.algorithm.synthesizers import Synthesizer
 from rvc.lib.my_utils import load_audio
-
 from rvc.modules.FlashSR import upscale
 
 # Определяем пути к папкам и файлам (константы)
