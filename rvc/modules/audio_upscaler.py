@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from FlashSR.FlashSR import FlashSR
 from TorchJaekwon.Util.UtilAudio import UtilAudio
-from TorchJaekwon.Util.UtilData import UtilData
 from tqdm import tqdm
 
 FLASH_SR_DIR = os.path.join(os.getcwd(), "rvc", "models", "FlashSR")
