@@ -6,7 +6,7 @@ def settings():
         with gr.Column(variant="panel"):
             with gr.Accordion("Стандартные настройки", open=False):
                 with gr.Group():
-                    with gr.Column():
+                    with gr.Column(variant="panel"):
                         f0_method = gr.Dropdown(
                             value="rmvpe",
                             label="Метод выделения тона",
@@ -14,6 +14,7 @@ def settings():
                             interactive=True,
                             visible=True,
                         )
+                    with gr.Column(variant="panel"):
                         index_rate = gr.Slider(
                             minimum=0,
                             maximum=1,
@@ -46,40 +47,41 @@ def settings():
                         )
 
             with gr.Accordion("Дополнительные настройки", open=False):
-                with gr.Column():
-                    with gr.Row():
-                        stereo_sound = gr.Checkbox(
-                            value=False,
-                            label="Преобразование моно звука в стерео",
-                            interactive=True,
-                            visible=True,
-                        )
-                        audio_upscaling = gr.Checkbox(
-                            label="Улучшить качество аудио (долгая обработка)",
-                            value=False,
-                            interactive=True,
-                            visible=True,
-                        )
-                    with gr.Row():
-                        f0_min = gr.Slider(
-                            minimum=1,
-                            maximum=120,
-                            step=1,
-                            value=50,
-                            label="Минимальный диапазон тона",
-                            info="Определяет нижнюю границу диапазона тона, который алгоритм будет использовать для определения основной частоты (F0) в аудиосигнале.",
-                            interactive=True,
-                            visible=True,
-                        )
-                        f0_max = gr.Slider(
-                            minimum=380,
-                            maximum=16000,
-                            step=1,
-                            value=1100,
-                            label="Максимальный диапазон тона",
-                            info="Определяет верхнюю границу диапазона тона, который алгоритм будет использовать для определения основной частоты (F0) в аудиосигнале.",
-                            interactive=True,
-                            visible=True,
-                        )
+                with gr.Group():
+                    with gr.Column():
+                        with gr.Row(variant="panel"):
+                            stereo_sound = gr.Checkbox(
+                                value=False,
+                                label="Преобразование моно звука в стерео",
+                                interactive=True,
+                                visible=True,
+                            )
+                            audio_upscaling = gr.Checkbox(
+                                label="Улучшить качество аудио (долгая обработка)",
+                                value=False,
+                                interactive=True,
+                                visible=True,
+                            )
+                        with gr.Row(variant="panel"):
+                            f0_min = gr.Slider(
+                                minimum=1,
+                                maximum=120,
+                                step=1,
+                                value=50,
+                                label="Минимальный диапазон тона",
+                                info="Определяет нижнюю границу диапазона тона, который алгоритм будет использовать для определения основной частоты (F0) в аудиосигнале.",
+                                interactive=True,
+                                visible=True,
+                            )
+                            f0_max = gr.Slider(
+                                minimum=380,
+                                maximum=16000,
+                                step=1,
+                                value=1100,
+                                label="Максимальный диапазон тона",
+                                info="Определяет верхнюю границу диапазона тона, который алгоритм будет использовать для определения основной частоты (F0) в аудиосигнале.",
+                                interactive=True,
+                                visible=True,
+                            )
 
     return f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, f0_min, f0_max
