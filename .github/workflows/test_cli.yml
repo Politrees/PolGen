@@ -56,7 +56,7 @@ jobs:
 
     - name: Run rvc script
       run: |
-        python3 -m rvc.infer.infer_cli rvc --input_path "audio/test.mp3" --rvc_model "Tsoi" --f0_method "rmvpe+" --f0_min 1 --f0_max 1100 --rvc_pitch -6 --protect 0.5 --index_rate 0 --volume_envelope 1 --autopitch True --autopitch_threshold 155.0 --autotune True --autotune_strength 1.0 --upscale True --output_format "mp3"
+        python3 -m rvc.infer.infer_cli rvc --input_path "audio/test.mp3" --rvc_model "Tsoi" --f0_method "rmvpe+" --f0_min 1 --f0_max 1100 --rvc_pitch -6 --protect 0.5 --index_rate 0 --volume_envelope 1 --autopitch True --autopitch_threshold 155.0 --autotune True --autotune_strength 1.0 --upscale True --stereo True --output_format "mp3"
 
     - name: Upload RVC output artifact
       uses: actions/upload-artifact@v4
@@ -100,4 +100,4 @@ jobs:
 
     - name: Run tts script
       run: |
-        python3 -m rvc.infer.infer_cli tts --tts_voice "en-US-GuyNeural" --tts_text "e" --tts_rate 0 --tts_volume 0 --tts_pitch 0 --rvc_model "Tsoi" --f0_method "rmvpe+" --f0_min 1 --f0_max 1100 --rvc_pitch -6 --protect 0.5 --index_rate 0 --volume_envelope 1 --autopitch True --autopitch_threshold 155.0 --autotune True --autotune_strength 1.0 --upscale True --output_format "mp3"
+        python3 -m rvc.infer.infer_cli tts --tts_voice "en-US-GuyNeural" --tts_text "e" --tts_rate 0 --tts_volume 0 --tts_pitch 0 --rvc_model "Tsoi" --f0_method "rmvpe+" --f0_min 1 --f0_max 1100 --rvc_pitch -6 --protect 0.5 --index_rate 0 --volume_envelope 1 --autopitch True --autopitch_threshold 155.0 --autotune True --autotune_strength 1.0 --upscale True --stereo True --output_format "mp3"

@@ -48,6 +48,19 @@ def settings():
             with gr.Accordion("Дополнительные настройки", open=False):
                 with gr.Column():
                     with gr.Row():
+                        stereo_sound = gr.Checkbox(
+                            value=False,
+                            label="Преобразование моно звука в стерео",
+                            interactive=True,
+                            visible=True,
+                        )
+                        audio_upscaling = gr.Checkbox(
+                            label="Улучшить качество аудио (долгая обработка)",
+                            value=False,
+                            interactive=True,
+                            visible=True,
+                        )
+                    with gr.Row():
                         f0_min = gr.Slider(
                             minimum=1,
                             maximum=120,
@@ -69,4 +82,4 @@ def settings():
                             visible=True,
                         )
 
-    return f0_method, index_rate, volume_envelope, protect, f0_min, f0_max
+    return f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, f0_min, f0_max

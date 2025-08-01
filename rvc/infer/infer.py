@@ -100,9 +100,13 @@ def get_vc(model_path):
 
 
 # Конвертируем файл в выбранный пользователем формат
-def convert_audio(input_audio, output_audio, output_format):
+def convert_audio(input_audio, output_audio, stereo, output_format):
     # Загружаем аудиофайл
     audio = AudioSegment.from_file(input_audio)
+
+    if stereo and audio.channels == 1:
+        audio = audio.set_channels(2)
+
     # Сохраняем аудиофайл в выбранном формате
     audio.export(output_audio, format=output_format)
 
@@ -140,6 +144,7 @@ def rvc_infer(
     autotune=False,
     autotune_strength=1.0,
     audio_upscaling=False,  # FlashSR
+    stereo_sound=False,
     output_format="wav",
     progress=gr.Progress(track_tqdm=True),
 ):
@@ -195,7 +200,7 @@ def rvc_infer(
     # Сохраняем файл и конвертируем его в выбранный формат
     display_progress(0.8, "[💫] Сохраняем результат...", True)
     wavfile.write(output_path, tgt_sr, audio_opt)
-    convert_audio(output_path, output_path, output_format)
+    convert_audio(output_path, output_path, stereo_sound, output_format)
 
     if audio_upscaling:
         display_progress(0.9, "[🚀] Улучшение качества аудио...", True)
@@ -225,6 +230,7 @@ def rvc_edgetts_infer(
     autopitch_threshold=155.0,
     autotune=False,
     autotune_strength=1.0,
+    stereo_sound=False,
     output_format="wav",
     # EdgeTTS
     tts_voice=None,
@@ -260,6 +266,7 @@ def rvc_edgetts_infer(
         autotune=autotune,
         autotune_strength=autotune_strength,
         audio_upscaling=audio_upscaling,
+        stereo_sound=stereo_sound,
         output_format=output_format,
     )
 

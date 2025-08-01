@@ -35,6 +35,7 @@ def create_parser():
     base.add_argument("--autotune", type=lambda x: bool(strtobool(x)), default=False, help="Коррекция высоты тона")
     base.add_argument("--autotune_strength", type=float, default=1.0, help="Сила автотюна")
     base.add_argument("--upscale", type=lambda x: bool(strtobool(x)), default=False, help="Улучшение качества звука")
+    base.add_argument("--stereo", type=lambda x: bool(strtobool(x)), default=False, help="Преобразование моно звука в стерео")
     base.add_argument("--output_format", type=str, default="mp3", help="Формат выходного файла")
 
     # Главный парсер с субкомандами
@@ -74,6 +75,7 @@ def main():
         "autotune": args.autotune,
         "autotune_strength": args.autotune_strength,
         "audio_upscaling": args.upscale,
+        "stereo_sound": args.stereo,
         "output_format": args.output_format,
     }
 
