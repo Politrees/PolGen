@@ -52,7 +52,7 @@ def settings():
                         with gr.Row(variant="panel"):
                             stereo_sound = gr.Checkbox(
                                 value=False,
-                                label="Преобразование моно звука в стерео",
+                                label="Преобразовать моно звук в стерео",
                                 interactive=True,
                                 visible=True,
                             )
