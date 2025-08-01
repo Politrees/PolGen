@@ -46,12 +46,6 @@ def inference_tab():
                         interactive=True,
                         visible=True,
                     )
-                audio_upscaling = gr.Checkbox(
-                    label="Улучшить качество аудио (долгая обработка)",
-                    value=False,
-                    interactive=True,
-                    visible=True,
-                )
                 autopitch_threshold = gr.Radio(
                     value=155.0,
                     choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
@@ -137,7 +131,7 @@ def inference_tab():
                 )
 
     # Компонент настроек
-    f0_method, index_rate, volume_envelope, protect, f0_min, f0_max = settings()
+    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, f0_min, f0_max = settings()
 
     # Загрузка файлов
     local_file.input(process_file_upload, inputs=[local_file], outputs=[song_input, local_file])
@@ -175,6 +169,7 @@ def inference_tab():
             autotune,
             autotune_strength,
             audio_upscaling,
+            stereo_sound,
             output_format,
         ],
         outputs=[converted_voice],
@@ -224,12 +219,6 @@ def edge_tts_tab():
                         autotune = gr.Checkbox(
                             value=False,
                             label="Коррекция высоты тона (АвтоТюн)",
-                            interactive=True,
-                            visible=True,
-                        )
-                        audio_upscaling = gr.Checkbox(
-                            label="Улучшить качество аудио (долгая обработка)",
-                            value=False,
                             interactive=True,
                             visible=True,
                         )
@@ -331,7 +320,7 @@ def edge_tts_tab():
                 )
 
     # Компонент настроек
-    f0_method, index_rate, volume_envelope, protect, f0_min, f0_max = settings()
+    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, f0_min, f0_max = settings()
 
     # Обновление списка TTS-голосов
     language.change(update_edge_voices, inputs=language, outputs=tts_voice)
@@ -361,6 +350,7 @@ def edge_tts_tab():
             autopitch_threshold,
             autotune,
             autotune_strength,
+            stereo_sound,
             output_format,
             tts_voice,
             tts_text,
