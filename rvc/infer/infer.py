@@ -128,6 +128,7 @@ def rvc_infer(
     index_rate=0,
     volume_envelope=1,
     autopitch=False,
+    autopitch_threshold=155.0,
     autotune=False,
     autotune_strength=1.0,
     audio_upscaling=False,  # FlashSR
@@ -180,6 +181,7 @@ def rvc_infer(
         version,
         protect,
         autopitch,
+        autopitch_threshold,
         autotune,
         autotune_strength,
     )
@@ -215,6 +217,7 @@ def rvc_edgetts_infer(
     index_rate=0,
     volume_envelope=1,
     autopitch=False,
+    autopitch_threshold=155.0,
     autotune=False,
     autotune_strength=1.0,
     stereo_sound=False,
@@ -249,6 +252,7 @@ def rvc_edgetts_infer(
         index_rate=index_rate,
         volume_envelope=volume_envelope,
         autopitch=autopitch,
+        autopitch_threshold=autopitch_threshold,
         autotune=autotune,
         autotune_strength=autotune_strength,
         audio_upscaling=audio_upscaling,

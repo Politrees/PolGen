@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from scipy import signal
 from tqdm import tqdm
 
-from rvc.lib.predictors.f0 import CREPE, FCPE, RMVPE, AutoTune, auto_calc_pitch_shift
+from rvc.lib.predictors.f0 import CREPE, FCPE, RMVPE, AutoTune, calc_pitch_shift
 
 # Фильтр Баттерворта для высоких частот
 bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
@@ -66,6 +66,7 @@ class VC:
         f0_max,
         f0_method,
         autopitch,
+        autopitch_threshold,
         autotune,
         autotune_strength,
     ):
@@ -96,13 +97,13 @@ class VC:
         if f0 is None:
             raise ValueError("Метод F0 не распознан или не смог рассчитать F0.")
 
-        # АвтоПитч (автоматическое определение высоты тона)
-        if autopitch is True:
-            pitch += auto_calc_pitch_shift(f0, 12)
-
         # АвтоТюн (коррекция высоты тона)
         if autotune is True:
             f0 = self.autotune.autotune_f0(f0, autotune_strength)
+
+        # АвтоПитч (автоматическое определение высоты тона)
+        if autopitch is True:
+            pitch += calc_pitch_shift(f0, autopitch_threshold, 12)
 
         f0 = np.multiply(f0, pow(2, pitch / 12))
         f0_mel = 1127 * np.log(1 + f0 / 700)
@@ -208,6 +209,7 @@ class VC:
         version,
         protect,
         autopitch,
+        autopitch_threshold,
         autotune,
         autotune_strength,
     ):
@@ -254,6 +256,7 @@ class VC:
                 f0_max,
                 f0_method,
                 autopitch,
+                autopitch_threshold,
                 autotune,
                 autotune_strength,
             )

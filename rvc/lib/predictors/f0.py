@@ -8,25 +8,13 @@ from torchfcpe import spawn_bundled_infer_model
 from rvc.lib.predictors.RMVPE import RMVPEF0Predictor
 
 
-def get_voiced_median_pitch(f0):
-    voiced_f0 = f0[f0 > 0]
-    if not np.any(voiced_f0):
-        return 0.0
-    return float(np.median(voiced_f0))
+def median_interp_pitch(f0):
+    f0 = np.where(f0 == 0, np.nan, f0)
+    return float(np.median(np.interp(np.arange(len(f0)), np.where(~np.isnan(f0))[0], f0[~np.isnan(f0)])))
 
 
 def calc_pitch_shift(f0, target_f0=155.0, limit_f0=12):
     return max(-limit_f0, min(limit_f0, int(np.round(12 * np.log2(target_f0 / median_interp_pitch(f0))))))
-
-
-def auto_calc_pitch_shift(f0, limit_f0=12):
-    source_pitch = get_voiced_median_pitch(f0)
-    
-    if source_pitch == 0.0:
-        return 0
-
-    target_f0 = 155.0 if source_pitch < 180.0  else 255.0
-    return int(max(-limit_f0, min(limit_f0, np.round(12 * np.log2(target_f0 / source_pitch)))))
 
 
 class AutoTune:
