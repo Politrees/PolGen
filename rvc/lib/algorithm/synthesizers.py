@@ -49,6 +49,7 @@ class Synthesizer(torch.nn.Module):
         n_layers: int,
         kernel_size: int,
         p_dropout: float,
+        resblock: str,  # placeholder
         resblock_kernel_sizes: list,
         resblock_dilation_sizes: list,
         upsample_rates: list,
