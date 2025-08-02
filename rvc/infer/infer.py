@@ -4,11 +4,11 @@ import os
 
 import edge_tts
 import gradio as gr
+import numpy as np
 import torch
 from fairseq.checkpoint_utils import load_model_ensemble_and_task
 from fairseq.data.dictionary import Dictionary
 from pydub import AudioSegment
-from scipy.io import wavfile
 
 from rvc.infer.config import Config
 from rvc.infer.pipeline import VC
@@ -99,18 +99,6 @@ def get_vc(model_path):
     return cpt, version, net_g, tgt_sr, vc, use_f0
 
 
-# Конвертируем файл в выбранный пользователем формат
-def convert_audio(input_audio, output_audio, stereo, output_format):
-    # Загружаем аудиофайл
-    audio = AudioSegment.from_file(input_audio)
-
-    if stereo and audio.channels == 1:
-        audio = audio.set_channels(2)
-
-    # Сохраняем аудиофайл в выбранном формате
-    audio.export(output_audio, format=output_format)
-
-
 # Синтезирует текст в речь с использованием edge_tts.
 async def text_to_speech(voice, text, rate, volume, pitch, output_path):
     if not -100 <= rate <= 100:
@@ -199,8 +187,10 @@ def rvc_infer(
     )
     # Сохраняем файл и конвертируем его в выбранный формат
     display_progress(0.8, "[💫] Сохраняем результат...", True)
-    wavfile.write(output_path, tgt_sr, audio_opt)
-    convert_audio(output_path, output_path, stereo_sound, output_format)
+    audio_segment = AudioSegment(data=(audio_opt * 32767).astype(np.int16).tobytes(), sample_width=2, frame_rate=tgt_sr, channels=1)
+    if stereo_sound and audio.channels == 1:
+        audio_segment = audio_segment.set_channels(2)
+    audio_segment.export(output_path, format=output_format)
 
     if audio_upscaling:
         display_progress(0.9, "[🚀] Улучшение качества аудио...", True)
