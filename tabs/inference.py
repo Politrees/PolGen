@@ -46,13 +46,6 @@ def inference_tab():
                         interactive=True,
                         visible=True,
                     )
-                autopitch_threshold = gr.Radio(
-                    value=155.0,
-                    choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
-                    show_label=False,
-                    interactive=True,
-                    visible=False,
-                )
                 rvc_pitch = gr.Slider(
                     minimum=-24,
                     maximum=24,
@@ -146,7 +139,7 @@ def inference_tab():
     autotune.change(show_autotune, inputs=autotune, outputs=autotune_strength)
 
     # Обновление метода регулировки высоты тона
-    autopitch.change(update_visible, inputs=autopitch, outputs=[autopitch_threshold, rvc_pitch])
+    autopitch.change(update_visible, inputs=autopitch, outputs=rvc_pitch)
 
     # Обновление списка моделей
     ref_btn.click(update_models_list, None, outputs=rvc_model)
@@ -165,7 +158,6 @@ def inference_tab():
             index_rate,
             volume_envelope,
             autopitch,
-            autopitch_threshold,
             autotune,
             autotune_strength,
             audio_upscaling,
@@ -223,13 +215,6 @@ def edge_tts_tab():
                             visible=True,
                         )
                     with gr.Row():
-                        autopitch_threshold = gr.Radio(
-                            value=155.0,
-                            choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
-                            show_label=False,
-                            interactive=True,
-                            visible=False,
-                        )
                         rvc_pitch = gr.Slider(
                             minimum=-24,
                             maximum=24,
@@ -326,7 +311,7 @@ def edge_tts_tab():
     language.change(update_edge_voices, inputs=language, outputs=tts_voice)
 
     # Обновление метода регулировки высоты тона
-    autopitch.change(update_visible, inputs=autopitch, outputs=[autopitch_threshold, rvc_pitch])
+    autopitch.change(update_visible, inputs=autopitch, outputs=rvc_pitch)
 
     # Показать autotune_strength
     autotune.change(show_autotune, inputs=autotune, outputs=autotune_strength)
@@ -347,7 +332,6 @@ def edge_tts_tab():
             index_rate,
             volume_envelope,
             autopitch,
-            autopitch_threshold,
             autotune,
             autotune_strength,
             stereo_sound,

@@ -41,7 +41,6 @@ def create_parser():
     base.add_argument("--index_rate", type=float, default=0, help="Коэффициент индекса")
     base.add_argument("--volume_envelope", type=float, default=1, help="Огибающая громкости")
     base.add_argument("--autopitch", type=lambda x: bool(strtobool(x)), default=False, help="Автоматическое определение высоты тона")
-    base.add_argument("--autopitch_threshold", type=float, default=155.0, help="155.0 — Мужская модель | 255.0 — Женская модель")
     base.add_argument("--autotune", type=lambda x: bool(strtobool(x)), default=False, help="Коррекция высоты тона")
     base.add_argument("--autotune_strength", type=float, default=1.0, help="Сила автотюна")
     base.add_argument("--upscale", type=lambda x: bool(strtobool(x)), default=False, help="Улучшение качества звука")
@@ -83,7 +82,6 @@ def main():
         "autopitch": args.autopitch,
         "autopitch_threshold": args.autopitch_threshold,
         "autotune": args.autotune,
-        "autotune_strength": args.autotune_strength,
         "audio_upscaling": args.upscale,
         "stereo_sound": args.stereo,
         "output_format": args.output_format,

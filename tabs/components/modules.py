@@ -80,9 +80,7 @@ def swap_buttons():
 
 
 def update_visible(autopitch):
-    if autopitch:
-        return gr.update(visible=True), gr.update(visible=False)
-    return gr.update(visible=False), gr.update(visible=True)
+    return gr.update(visible=False if autopitch else True)
 
 
 def show_autotune(autotune):
