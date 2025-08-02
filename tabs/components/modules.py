@@ -87,3 +87,7 @@ def update_visible(autopitch):
 
 def show_autotune(autotune):
     return gr.update(visible=autotune)
+
+
+def output_message():
+    return gr.Text(label="Сообщение вывода", interactive=False)
