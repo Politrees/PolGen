@@ -188,7 +188,7 @@ def rvc_infer(
     # Сохраняем файл и конвертируем его в выбранный формат
     display_progress(0.8, "[💫] Сохраняем результат...", True)
     audio_segment = AudioSegment(data=(audio_opt * 32767).astype(np.int16).tobytes(), sample_width=2, frame_rate=tgt_sr, channels=1)
-    if stereo_sound and audio.channels == 1:
+    if stereo_sound:
         audio_segment = audio_segment.set_channels(2)
     audio_segment.export(output_path, format=output_format)
 
