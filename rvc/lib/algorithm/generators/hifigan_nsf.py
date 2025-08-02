@@ -162,21 +162,17 @@ class HiFiGANNSFGenerator(torch.nn.Module):
                 x = checkpoint(ups, x, use_reentrant=False)
                 x = x + noise_convs(har_source)
                 xs = sum(
-                    [
-                        checkpoint(resblock, x, use_reentrant=False)
-                        for j, resblock in enumerate(self.resblocks)
-                        if j in range(i * self.num_kernels, (i + 1) * self.num_kernels)
-                    ]
+                    checkpoint(resblock, x, use_reentrant=False)
+                    for j, resblock in enumerate(self.resblocks)
+                    if j in range(i * self.num_kernels, (i + 1) * self.num_kernels)
                 )
             else:
                 x = ups(x)
                 x = x + noise_convs(har_source)
                 xs = sum(
-                    [
-                        resblock(x)
-                        for j, resblock in enumerate(self.resblocks)
-                        if j in range(i * self.num_kernels, (i + 1) * self.num_kernels)
-                    ]
+                    resblock(x)
+                    for j, resblock in enumerate(self.resblocks)
+                    if j in range(i * self.num_kernels, (i + 1) * self.num_kernels)
                 )
             x = xs / self.num_kernels
 
