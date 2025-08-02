@@ -93,8 +93,10 @@ class RMVPE:
     def get_f0(self, audio, type_rmvpe="rmvpe"):
         if type_rmvpe == "rmvpe":
             return self.model.infer_from_audio(audio, thred=0.03)
+
         if type_rmvpe == "rmvpe+":
             return self.model.infer_from_audio_modified(audio, thred=0.02)
+
         raise ValueError(f"Недопустимое значение: {type_rmvpe!r}")
 
 

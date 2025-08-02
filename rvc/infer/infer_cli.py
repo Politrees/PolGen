@@ -19,11 +19,13 @@ from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
 
 
 def strtobool(val: str) -> bool:
-    val = val.lower()
-    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+    lower_val = val.lower()
+    if lower_val in ('y', 'yes', 't', 'true', 'on', '1'):
         return True
-    if val in ('n', 'no', 'f', 'false', 'off', '0'):
+    
+    if lower_val in ('n', 'no', 'f', 'false', 'off', '0'):
         return False
+
     raise ValueError(f"Недопустимое значение: {val!r}")
 
 
