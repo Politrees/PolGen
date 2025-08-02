@@ -19,10 +19,12 @@ from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
 
 
 def strtobool(val: str) -> bool:
-    if val.lower() in ('y', 'yes', 't', 'true', 'on', '1'):
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
         return True
-    if val.lower() in ('n', 'no', 'f', 'false', 'off', '0'):
+    if val in ('n', 'no', 'f', 'false', 'off', '0'):
         return False
+    raise ValueError(f"Недопустимое значение: {val!r}")
 
 
 def create_parser():
