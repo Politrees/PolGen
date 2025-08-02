@@ -1,5 +1,3 @@
-from multiprocessing import cpu_count
-
 import torch
 
 
