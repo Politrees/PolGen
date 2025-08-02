@@ -54,7 +54,6 @@ class VC:
         self.t_query = self.sample_rate * self.x_query
         self.t_center = self.sample_rate * self.x_center
         self.t_max = self.sample_rate * self.x_max
-        self.time_step = self.window / self.sample_rate * 1000
         self.device = config.device
         self.autotune = AutoTune()
 
