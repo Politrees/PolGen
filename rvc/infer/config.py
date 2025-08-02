@@ -34,6 +34,5 @@ class Config:
         if self.gpu_mem is not None and self.gpu_mem <= 4:
             # Параметры для GPU с низкой памятью
             return (1, 5, 30, 32)
-        else:
-            # Параметры по умолчанию
-            return (1, 6, 38, 41)
+        # Параметры по умолчанию
+        return (1, 6, 38, 41)

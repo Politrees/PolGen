@@ -102,7 +102,7 @@ class SineGenerator(torch.nn.Module):
         noise_std: float = 0.003,
         voiced_threshold: float = 0,
     ):
-        super(SineGenerator, self).__init__()
+        super().__init__()
         self.sine_amp = sine_amp
         self.noise_std = noise_std
         self.harmonic_num = harmonic_num
@@ -192,7 +192,7 @@ class SourceModuleHnNSF(torch.nn.Module):
         add_noise_std: float = 0.003,
         voiced_threshold: float = 0,
     ):
-        super(SourceModuleHnNSF, self).__init__()
+        super().__init__()
 
         self.sine_amp = sine_amp
         self.noise_std = add_noise_std
@@ -205,7 +205,7 @@ class SourceModuleHnNSF(torch.nn.Module):
         self.l_tanh = torch.nn.Tanh()
 
     def forward(self, x: torch.Tensor):
-        sine_wavs, uv, _ = self.l_sin_gen(x)
+        sine_wavs, _, _ = self.l_sin_gen(x)
         sine_wavs = sine_wavs.to(dtype=self.l_linear.weight.dtype)
         sine_merge = self.l_tanh(self.l_linear(sine_wavs))
 
@@ -280,17 +280,7 @@ class HiFiGANMRFGenerator(torch.nn.Module):
                     )
                 )
             )
-            """ handling odd upsampling rates
-            #  s   k   p
-            # 40  80  20
-            # 32  64  16
-            #  4   8   2
-            #  2   3   1
-            # 63 125  31
-            #  9  17   4
-            #  3   5   1
-            #  1   1   0
-            """
+
             stride = stride_f0s[i]
             kernel = 1 if stride == 1 else stride * 2 - stride % 2
             padding = 0 if stride == 1 else (kernel - stride) // 2

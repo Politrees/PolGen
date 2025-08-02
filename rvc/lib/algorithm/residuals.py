@@ -89,8 +89,7 @@ class Flip(torch.nn.Module):
         if not reverse:
             logdet = torch.zeros(x.size(0), dtype=x.dtype, device=x.device)
             return x, logdet
-        else:
-            return x
+        return x
 
 
 class ResidualCouplingBlock(torch.nn.Module):
@@ -117,7 +116,7 @@ class ResidualCouplingBlock(torch.nn.Module):
         n_flows: int = 4,
         gin_channels: int = 0,
     ):
-        super(ResidualCouplingBlock, self).__init__()
+        super().__init__()
         self.channels = channels
         self.hidden_channels = hidden_channels
         self.kernel_size = kernel_size
@@ -240,10 +239,9 @@ class ResidualCouplingLayer(torch.nn.Module):
             x = torch.cat([x0, x1], 1)
             logdet = torch.sum(logs, [1, 2])
             return x, logdet
-        else:
-            x1 = (x1 - m) * torch.exp(-logs) * x_mask
-            x = torch.cat([x0, x1], 1)
-            return x
+        x1 = (x1 - m) * torch.exp(-logs) * x_mask
+        x = torch.cat([x0, x1], 1)
+        return x
 
     def remove_weight_norm(self):
         self.enc.remove_weight_norm()

@@ -25,7 +25,7 @@ def _getWindowingArray(window_size, fade_size):
 
 
 def process_audio(input_path, output_path, overlap, flashsr, device):
-    audio, sr = UtilAudio.read(input_path, sample_rate=48000)
+    audio, _ = UtilAudio.read(input_path, sample_rate=48000)
     audio = audio.to(device)
 
     C = 245760  # chunk_size

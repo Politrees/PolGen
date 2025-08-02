@@ -34,10 +34,10 @@ def dl_model(link, model_name, dir_name):
         unit="iB",
         unit_scale=True,
         unit_divisor=1024,
-    ) as bar:
+    ) as pbar:
         for chunk in r.iter_content(chunk_size=8192):
             f.write(chunk)
-            bar.update(len(chunk))
+            pbar.update(len(chunk))
 
 
 def check_and_install_models():

@@ -25,7 +25,6 @@ class Synthesizer(torch.nn.Module):
         n_layers (int): Number of layers in the encoder.
         kernel_size (int): Size of the convolution kernel.
         p_dropout (float): Dropout probability.
-        resblock (str): Type of residual block.
         resblock_kernel_sizes (list): Kernel sizes for the residual blocks.
         resblock_dilation_sizes (list): Dilation sizes for the residual blocks.
         upsample_rates (list): Upsampling rates for the decoder.
@@ -50,7 +49,6 @@ class Synthesizer(torch.nn.Module):
         n_layers: int,
         kernel_size: int,
         p_dropout: float,
-        resblock: str,
         resblock_kernel_sizes: list,
         resblock_dilation_sizes: list,
         upsample_rates: list,
@@ -100,9 +98,7 @@ class Synthesizer(torch.nn.Module):
             elif vocoder == "RefineGAN":
                 self.dec = RefineGANGenerator(
                     sample_rate=sr,
-                    downsample_rates=upsample_rates[::-1],
                     upsample_rates=upsample_rates,
-                    start_channels=16,
                     num_mels=inter_channels,
                     checkpointing=checkpointing,
                 )
@@ -184,24 +180,18 @@ class Synthesizer(torch.nn.Module):
         if y is not None:
             z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
             z_p = self.flow(z, y_mask, g=g)
+
             # regular old training method using random slices
             if self.randomized:
                 z_slice, ids_slice = rand_slice_segments(z, y_lengths, self.segment_size)
-                if self.use_f0:
-                    pitchf = slice_segments(pitchf, ids_slice, self.segment_size, 2)
-                    o = self.dec(z_slice, pitchf, g=g)
-                else:
-                    o = self.dec(z_slice, g=g)
+                pitchf = slice_segments(pitchf, ids_slice, self.segment_size, 2) if self.use_f0 else pitchf
+                o = self.dec(z_slice, pitchf, g=g) if self.use_f0 else self.dec(z_slice, g=g)
                 return o, ids_slice, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
+
             # future use for finetuning using the entire dataset each pass
-            else:
-                if self.use_f0:
-                    o = self.dec(z, pitchf, g=g)
-                else:
-                    o = self.dec(z, g=g)
-                return o, None, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
-        else:
-            return None, None, x_mask, None, (None, None, m_p, logs_p, None, None)
+            o = self.dec(z, pitchf, g=g) if self.use_f0 else self.dec(z, g=g)
+            return o, None, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
+        return None, None, x_mask, None, (None, None, m_p, logs_p, None, None)
 
     @torch.jit.export
     def infer(

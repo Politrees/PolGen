@@ -75,7 +75,7 @@ class MultiHeadAttention(torch.nn.Module):
         q, k, v = self.conv_q(x), self.conv_k(c), self.conv_v(c)
 
         # Compute attention
-        x, self.attn = self.attention(q, k, v, mask=attn_mask)
+        x, _ = self.attention(q, k, v, mask=attn_mask)
 
         # Final output projection
         return self.conv_o(x)

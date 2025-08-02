@@ -92,10 +92,9 @@ class RMVPE:
 
     def get_f0(self, audio, type_rmvpe="rmvpe"):
         if type_rmvpe == "rmvpe":
-            f0 = self.model.infer_from_audio(audio, thred=0.03)
+            return self.model.infer_from_audio(audio, thred=0.03)
         elif type_rmvpe == "rmvpe+":
-            f0 = self.model.infer_from_audio_modified(audio, thred=0.02)
-        return f0
+            return self.model.infer_from_audio_modified(audio, thred=0.02)
 
 
 class CREPE:
