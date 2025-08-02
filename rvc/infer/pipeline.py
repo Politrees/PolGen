@@ -97,13 +97,13 @@ class VC:
         if f0 is None:
             raise ValueError("Метод F0 не распознан или не смог рассчитать F0.")
 
-        # АвтоТюн (коррекция высоты тона)
-        if autotune is True:
-            f0 = self.autotune.autotune_f0(f0, autotune_strength)
-
         # АвтоПитч (автоматическое определение высоты тона)
         if autopitch is True:
             pitch += calc_pitch_shift(f0, autopitch_threshold, 12)
+
+        # АвтоТюн (коррекция высоты тона)
+        if autotune is True:
+            f0 = self.autotune.autotune_f0(f0, autotune_strength)
 
         f0 = np.multiply(f0, pow(2, pitch / 12))
         f0_mel = 1127 * np.log(1 + f0 / 700)
