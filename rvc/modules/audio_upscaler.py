@@ -25,7 +25,7 @@ def _getWindowingArray(window_size, fade_size):
 
 
 def process_audio(input_path, output_path, overlap, flashsr, device):
-    audio, sr = UtilAudio.read(input_path, sample_rate=48000)
+    audio, _ = UtilAudio.read(input_path, sample_rate=48000)
     audio = audio.to(device)
 
     C = 245760  # chunk_size
@@ -41,8 +41,6 @@ def process_audio(input_path, output_path, overlap, flashsr, device):
         audio = torch.nn.functional.pad(audio, (border, border), mode="reflect")
 
     total_chunks = math.ceil(audio.size(1) / step)
-    print(total_chunks)
-
     windowingArray = _getWindowingArray(C, fade_size)
 
     result = torch.zeros((1,) + tuple(audio.shape), dtype=torch.float32)

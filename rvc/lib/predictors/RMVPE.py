@@ -103,7 +103,6 @@ class Encoder(torch.nn.Module):
             in_channels = out_channels
             out_channels *= 2
             in_size //= 2
-        self.out_size = in_size
         self.out_channel = out_channels
 
     def forward(self, x: torch.Tensor):
@@ -306,13 +305,11 @@ class MelSpectrogram(torch.nn.Module):
 
 class RMVPEF0Predictor:
     def __init__(self, model_path, device=None):
-        self.resample_kernel = {}
         model = E2E(4, 1, (2, 2))
         ckpt = torch.load(model_path, map_location="cpu", weights_only=True)
         model.load_state_dict(ckpt)
         model.eval()
         self.model = model
-        self.resample_kernel = {}
         self.device = device
         self.mel_extractor = MelSpectrogram(N_MELS, 16000, 1024, 160, None, 30, 8000).to(device)
         self.model = self.model.to(device)

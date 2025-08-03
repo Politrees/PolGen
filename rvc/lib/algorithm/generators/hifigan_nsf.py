@@ -34,7 +34,7 @@ class SourceModuleHnNSF(torch.nn.Module):
         add_noise_std: float = 0.003,
         voiced_threshod: float = 0,
     ):
-        super(SourceModuleHnNSF, self).__init__()
+        super().__init__()
 
         self.sine_amp = sine_amp
         self.noise_std = add_noise_std
@@ -44,7 +44,7 @@ class SourceModuleHnNSF(torch.nn.Module):
         self.l_tanh = torch.nn.Tanh()
 
     def forward(self, x: torch.Tensor, upsample_factor: int = 1):
-        sine_wavs, uv, _ = self.l_sin_gen(x, upsample_factor)
+        sine_wavs, _, _ = self.l_sin_gen(x, upsample_factor)
         sine_wavs = sine_wavs.to(dtype=self.l_linear.weight.dtype)
         sine_merge = self.l_tanh(self.l_linear(sine_wavs))
         return sine_merge, None, None
@@ -82,7 +82,7 @@ class HiFiGANNSFGenerator(torch.nn.Module):
         sr: int,
         checkpointing: bool = False,
     ):
-        super(HiFiGANNSFGenerator, self).__init__()
+        super().__init__()
 
         self.num_kernels = len(resblock_kernel_sizes)
         self.num_upsamples = len(upsample_rates)
@@ -118,17 +118,7 @@ class HiFiGANNSFGenerator(torch.nn.Module):
                     )
                 )
             )
-            """ handling odd upsampling rates
-            #  s   k   p
-            # 40  80  20
-            # 32  64  16
-            #  4   8   2
-            #  2   3   1
-            # 63 125  31
-            #  9  17   4
-            #  3   5   1
-            #  1   1   0
-            """
+
             stride = stride_f0s[i]
             kernel = 1 if stride == 1 else stride * 2 - stride % 2
             padding = 0 if stride == 1 else (kernel - stride) // 2
@@ -172,21 +162,17 @@ class HiFiGANNSFGenerator(torch.nn.Module):
                 x = checkpoint(ups, x, use_reentrant=False)
                 x = x + noise_convs(har_source)
                 xs = sum(
-                    [
-                        checkpoint(resblock, x, use_reentrant=False)
-                        for j, resblock in enumerate(self.resblocks)
-                        if j in range(i * self.num_kernels, (i + 1) * self.num_kernels)
-                    ]
+                    checkpoint(resblock, x, use_reentrant=False)
+                    for j, resblock in enumerate(self.resblocks)
+                    if j in range(i * self.num_kernels, (i + 1) * self.num_kernels)
                 )
             else:
                 x = ups(x)
                 x = x + noise_convs(har_source)
                 xs = sum(
-                    [
-                        resblock(x)
-                        for j, resblock in enumerate(self.resblocks)
-                        if j in range(i * self.num_kernels, (i + 1) * self.num_kernels)
-                    ]
+                    resblock(x)
+                    for j, resblock in enumerate(self.resblocks)
+                    if j in range(i * self.num_kernels, (i + 1) * self.num_kernels)
                 )
             x = xs / self.num_kernels
 

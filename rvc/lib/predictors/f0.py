@@ -18,69 +18,50 @@ def calc_pitch_shift(f0, target_f0=155.0, limit_f0=12):
 
 
 class AutoTune:
-    def __init__(self):
-        self.note_dict = [
-            49.00,  # G1
-            51.91,  # G#1 / Ab1
-            55.00,  # A1
-            58.27,  # A#1 / Bb1
-            61.74,  # B1
-            65.41,  # C2
-            69.30,  # C#2 / Db2
-            73.42,  # D2
-            77.78,  # D#2 / Eb2
-            82.41,  # E2
-            87.31,  # F2
-            92.50,  # F#2 / Gb2
-            98.00,  # G2
-            103.83,  # G#2 / Ab2
-            110.00,  # A2
-            116.54,  # A#2 / Bb2
-            123.47,  # B2
-            130.81,  # C3
-            138.59,  # C#3 / Db3
-            146.83,  # D3
-            155.56,  # D#3 / Eb3
-            164.81,  # E3
-            174.61,  # F3
-            185.00,  # F#3 / Gb3
-            196.00,  # G3
-            207.65,  # G#3 / Ab3
-            220.00,  # A3
-            233.08,  # A#3 / Bb3
-            246.94,  # B3
-            261.63,  # C4
-            277.18,  # C#4 / Db4
-            293.66,  # D4
-            311.13,  # D#4 / Eb4
-            329.63,  # E4
-            349.23,  # F4
-            369.99,  # F#4 / Gb4
-            392.00,  # G4
-            415.30,  # G#4 / Ab4
-            440.00,  # A4
-            466.16,  # A#4 / Bb4
-            493.88,  # B4
-            523.25,  # C5
-            554.37,  # C#5 / Db5
-            587.33,  # D5
-            622.25,  # D#5 / Eb5
-            659.25,  # E5
-            698.46,  # F5
-            739.99,  # F#5 / Gb5
-            783.99,  # G5
-            830.61,  # G#5 / Ab5
-            880.00,  # A5
-            932.33,  # A#5 / Bb5
-            987.77,  # B5
-            1046.50,  # C6
-        ]
+    def __init__(self, a4_pitch: float = 440.0, scale: str = "chromatic"):
+        self.a4_pitch = a4_pitch
 
-    def autotune_f0(self, f0, f0_autotune_strength):
-        autotuned_f0 = np.zeros_like(f0)
-        for i, freq in enumerate(f0):
-            closest_note = min(self.note_dict, key=lambda x: abs(x - freq))
-            autotuned_f0[i] = freq + (closest_note - freq) * f0_autotune_strength
+        scales = {
+            "chromatic": list(range(12)),  # Все 12 нот
+            "major": [0, 2, 4, 5, 7, 9, 11],
+            "minor": [0, 2, 3, 5, 7, 8, 10],
+            "pentatonic_major": [0, 2, 4, 7, 9],
+            "pentatonic_minor": [0, 3, 5, 7, 10],
+        }
+
+        if isinstance(scale, str):
+            if scale not in scales:
+                raise ValueError(f"Неизвестный масштаб: {scale}. Доступные масштабы: {list(scales.keys())}")
+            scale_semitones = scales[scale]
+        else:
+            scale_semitones = scale # Пользовательский набор полутонов
+
+        note_freqs = []
+        # Генерируем ноты в диапазоне от C1 (MIDI 24) до C8 (MIDI 108)
+        for midi_note in range(24, 109):
+            if (midi_note % 12) in scale_semitones:
+                freq = self.a4_pitch * (2 ** ((midi_note - 69) / 12))
+                note_freqs.append(freq)
+
+        self.note_array = np.array(note_freqs)
+
+    def autotune_f0(self, f0: np.ndarray, f0_autotune_strength: float) -> np.ndarray:
+        if not self.note_array.any() or f0_autotune_strength == 0:
+            return f0 # Если нет нот для настройки или сила равна нулю, ничего не делаем
+
+        autotuned_f0 = f0.copy()
+        voiced_mask = f0 > 0
+        if not np.any(voiced_mask):
+            return f0 # Если нет вокализованных участков
+
+        f0_voiced = f0[voiced_mask]
+
+        # Находим ближайшие разрешенные ноты для каждой вокализованной частоты
+        diff = np.abs(f0_voiced[:, None] - self.note_array[None, :])
+        closest_notes = self.note_array[np.argmin(diff, axis=1)]
+
+        # Применяем коррекцию только к вокализованным участкам
+        autotuned_f0[voiced_mask] = f0_voiced + (closest_notes - f0_voiced) * f0_autotune_strength
         return autotuned_f0
 
 
@@ -92,10 +73,12 @@ class RMVPE:
 
     def get_f0(self, audio, type_rmvpe="rmvpe"):
         if type_rmvpe == "rmvpe":
-            f0 = self.model.infer_from_audio(audio, thred=0.03)
-        elif type_rmvpe == "rmvpe+":
-            f0 = self.model.infer_from_audio_modified(audio, thred=0.02)
-        return f0
+            return self.model.infer_from_audio(audio, thred=0.03)
+
+        if type_rmvpe == "rmvpe+":
+            return self.model.infer_from_audio_modified(audio, thred=0.02)
+
+        raise ValueError(f"Недопустимое значение: {type_rmvpe!r}")
 
 
 class CREPE:

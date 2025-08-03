@@ -28,13 +28,14 @@ jobs:
           uv pip install --no-cache-dir flake8 pylint vulture -r requirements.txt -q --system
 
       - name: Run flake8
-        run: flake8 . --max-line-length 140 --max-doc-length 140 --doctests
+        run: flake8 . --max-line-length 140 --max-doc-length 140 --ignore=E203,E402,E501,W505 --doctests --statistics
         continue-on-error: true
 
       - name: Run PyLint
-        run: pylint $(find . -name '*.py') --max-line-length 140 --disable=C0114,C0115,C0116,C0413,R0801,R0902,R0903,R0904,R0911,R0912,R0913,R0914,R0915,R0916,R0917
+        run: pylint $(find . -name '*.py') --max-line-length 140 --disable=C0114,C0115,C0116,W0212,C0411,C0413,R0801,R0902,R0903,R0904,R0911,R0912,R0913,R0914,R0915,R0916,R0917,E1101
         continue-on-error: true
 
       - name: Run Vulture
         run: vulture .
         continue-on-error: true
+

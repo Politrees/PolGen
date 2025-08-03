@@ -201,7 +201,7 @@ class SineGenerator(nn.Module):
         noise_std=0.003,
         voiced_threshold=0,
     ):
-        super(SineGenerator, self).__init__()
+        super().__init__()
         self.sine_amp = sine_amp
         self.noise_std = noise_std
         self.harmonic_num = harmonic_num
@@ -274,11 +274,9 @@ class RefineGANGenerator(nn.Module):
 
     Args:
         sample_rate (int, optional): Sampling rate of the audio. Defaults to 44100.
-        downsample_rates (tuple[int], optional): Downsampling rates for the downsampling blocks. Defaults to (2, 2, 8, 8).
         upsample_rates (tuple[int], optional): Upsampling rates for the upsampling blocks. Defaults to (8, 8, 2, 2).
         leaky_relu_slope (float, optional): Slope for the Leaky ReLU activation. Defaults to 0.2.
         num_mels (int, optional): Number of mel-frequency bins in the input mel-spectrogram. Defaults to 128.
-        start_channels (int, optional): Number of channels in the initial convolutional layer. Defaults to 16.
         gin_channels (int, optional): Number of channels for the global conditioning input. Defaults to 256.
         checkpointing (bool, optional): Whether to use checkpointing for memory efficiency. Defaults to False.
     """
@@ -287,11 +285,9 @@ class RefineGANGenerator(nn.Module):
         self,
         *,
         sample_rate: int = 44100,
-        downsample_rates: tuple[int] = (2, 2, 8, 8),  # unused
         upsample_rates: tuple[int] = (8, 8, 2, 2),
         leaky_relu_slope: float = 0.2,
         num_mels: int = 128,
-        start_channels: int = 16,  # unused
         gin_channels: int = 256,
         checkpointing: bool = False,
         upsample_initial_channel=512,
@@ -320,7 +316,7 @@ class RefineGANGenerator(nn.Module):
         channels = upsample_initial_channel
 
         self.downsample_blocks = nn.ModuleList([])
-        for i, u in enumerate(upsample_rates):
+        for i, _ in enumerate(upsample_rates):
             # handling odd upsampling rates
             stride = stride_f0s[i]
             kernel = 1 if stride == 1 else stride * 2 - stride % 2

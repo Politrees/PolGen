@@ -7,7 +7,6 @@ import argparse
 import logging
 import os
 import warnings
-from distutils.util import strtobool
 
 # Настройка окружения
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -17,6 +16,17 @@ logging.basicConfig(level=logging.WARNING)
 warnings.filterwarnings("ignore")
 
 from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
+
+
+def strtobool(val: str) -> bool:
+    lower_val = val.lower()
+    if lower_val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return True
+    
+    if lower_val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return False
+
+    raise ValueError(f"Недопустимое значение: {val!r}")
 
 
 def create_parser():

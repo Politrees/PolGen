@@ -75,7 +75,7 @@ def rand_slice_segments(x, x_lengths=None, segment_size=4):
         x_lengths: The lengths of the sequences.
         segment_size: The size of each segment.
     """
-    b, d, t = x.size()
+    b, _, t = x.size()
     if x_lengths is None:
         x_lengths = t
     ids_str_max = x_lengths - segment_size + 1
@@ -114,22 +114,3 @@ def sequence_mask(length: torch.Tensor, max_length: Optional[int] = None):
         max_length = length.max()
     x = torch.arange(max_length, dtype=length.dtype, device=length.device)
     return x.unsqueeze(0) < length.unsqueeze(1)
-
-
-def grad_norm(parameters, norm_type: float = 2.0):
-    """
-    Calculates norm of parameter gradients
-
-    Args:
-        parameters: The list of parameters to clip.
-        norm_type: The type of norm to use for clipping.
-    """
-    if isinstance(parameters, torch.Tensor):
-        parameters = [parameters]
-
-    parameters = [p for p in parameters if p.grad is not None]
-
-    if not parameters:
-        return 0.0
-
-    return torch.linalg.vector_norm(torch.stack([p.grad.norm(norm_type) for p in parameters]), ord=norm_type).item()

@@ -27,10 +27,6 @@ def toggle_custom_url(checkbox_value):
     return gr.update(visible=False, value=""), gr.update(visible=True, value="hubert_base.pt")
 
 
-def output_message():
-    return gr.Text(label="Сообщение вывода", interactive=False)
-
-
 def download_file(url, destination):
     with urllib.request.urlopen(url) as response, open(destination, "wb") as out_file:
         shutil.copyfileobj(response, out_file)
