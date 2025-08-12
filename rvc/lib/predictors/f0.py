@@ -34,7 +34,7 @@ class AutoTune:
                 raise ValueError(f"Неизвестный масштаб: {scale}. Доступные масштабы: {list(scales.keys())}")
             scale_semitones = scales[scale]
         else:
-            scale_semitones = scale # Пользовательский набор полутонов
+            scale_semitones = scale  # Пользовательский набор полутонов
 
         note_freqs = []
         # Генерируем ноты в диапазоне от C1 (MIDI 24) до C8 (MIDI 108)
@@ -47,12 +47,12 @@ class AutoTune:
 
     def autotune_f0(self, f0: np.ndarray, f0_autotune_strength: float) -> np.ndarray:
         if not self.note_array.any() or f0_autotune_strength == 0:
-            return f0 # Если нет нот для настройки или сила равна нулю, ничего не делаем
+            return f0  # Если нет нот для настройки или сила равна нулю, ничего не делаем
 
         autotuned_f0 = f0.copy()
         voiced_mask = f0 > 0
         if not np.any(voiced_mask):
-            return f0 # Если нет вокализованных участков
+            return f0  # Если нет вокализованных участков
 
         f0_voiced = f0[voiced_mask]
 
