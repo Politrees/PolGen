@@ -11,8 +11,8 @@ from pydub import AudioSegment
 from rvc.infer.config import Config
 from rvc.infer.pipeline import VC
 from rvc.lib.algorithm.synthesizers import Synthesizer
-from rvc.lib.my_utils import load_audio
 from rvc.lib.fairseq import load_model
+from rvc.lib.my_utils import load_audio
 from rvc.modules.audio_upscaler import upscale
 
 # Определяем пути к папкам и файлам (константы)

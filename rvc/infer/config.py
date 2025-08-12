@@ -8,7 +8,7 @@ class Config:
         print(f"Используемое устройство: {self.device}")
 
         # Конфигурация параметров GPU
-        self.gpu_name, self.gpu_mem = (self._configure_gpu() if self.device == "cuda" else (None, None))
+        self.gpu_name, self.gpu_mem = self._configure_gpu() if self.device == "cuda" else (None, None)
 
         # Установка параметров на основе памяти GPU
         self.x_pad, self.x_query, self.x_center, self.x_max = self._get_device_params()
