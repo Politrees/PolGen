@@ -1,31 +1,31 @@
-# Основные библиотеки
+# Интерфейс
 gradio==5.35.0
-requests
+
+# Основные ML-фреймворки
 numpy<2
-einops
-mega-x
-gdown
-wget
-tqdm
-
-# Библиотеки для работы с аудио и видео
-ffmpeg-python>=0.2.0
-PolUVR[gpu]
-PolFlashSR
-torchcrepe
-torchfcpe
-edge-tts
-pydub
-
-# Машинное обучение и нейронные сети
 torch==2.7.1
 torchaudio==2.7.1
 torchvision==0.22.1
-faiss-cpu==1.7.3
-local-attention
-tensorboardX
 
-# Условные зависимости
-fairseq; python_version < '3.11'
-https://github.com/Bebra777228/TrainVocModel-EN/releases/download/fixed-packages/fairseq-0.12.3-cp311-cp311-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.11'
-https://github.com/Bebra777228/TrainVocModel-EN/releases/download/fixed-packages/fairseq-0.12.3-cp311-cp311-win_amd64.whl; sys_platform == 'win32' and python_version == '3.11'
+# Аудиообработка
+pydub
+edge-tts
+PolFlashSR
+PolUVR[gpu]
+ffmpeg-python>=0.2.0
+
+# Отслеживание высоты тона
+torchfcpe
+torchcrepe
+
+# Вспомогательные утилиты и библиотеки
+wget
+tqdm
+gdown
+mega-x
+einops
+requests
+omegaconf
+tensorboardX
+local-attention
+faiss-cpu==1.7.3
