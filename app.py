@@ -20,12 +20,14 @@ logging.basicConfig(level=logging.WARNING)
 warnings.filterwarnings("ignore")
 
 import gradio as gr
-# from PolUVR.utils import PolUVR_UI
 
 from tabs.components.modules import output_message
 from tabs.inference import edge_tts_tab, inference_tab
 from tabs.install import files_upload, install_hubert_tab, url_zip_download, zip_upload
 from tabs.welcome import welcome_tab
+
+# from PolUVR.utils import PolUVR_UI
+
 
 DEFAULT_SERVER_NAME = "127.0.0.1"
 DEFAULT_PORT = 4000
