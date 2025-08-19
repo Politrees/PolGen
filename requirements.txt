@@ -26,6 +26,6 @@ mega-x
 einops
 requests
 omegaconf
+faiss-cpu
 tensorboardX
 local-attention
-faiss-cpu==1.7.3

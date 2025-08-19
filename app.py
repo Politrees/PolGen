@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.WARNING)
 warnings.filterwarnings("ignore")
 
 import gradio as gr
-# from PolUVR.utils import PolUVR_UI
+from PolUVR.utils import PolUVR_UI
 
 from tabs.components.modules import output_message
 from tabs.inference import edge_tts_tab, inference_tab
@@ -60,13 +60,13 @@ with gr.Blocks(
         with gr.Tab("Преобразование текста в речь (TTS)"):
             edge_tts_tab()
 
-    # with gr.Tab("PolUVR (UVR)"):
-    #     if is_offline_mode():
-    #         gr.HTML(
-    #             "<center><h3>PolUVR не будет функционировать без подключения к интернету, если вы ранее не установили необходимые модели.</h3></center>"
-    #         )
-    #     # https://github.com/Politrees/PolUVR?tab=readme-ov-file#integrate-our-interface-into-your-gradio-projects
-    #     PolUVR_UI("models/UVR_models", "output/UVR_output")
+    with gr.Tab("PolUVR (UVR)"):
+        if is_offline_mode():
+            gr.HTML(
+                "<center><h3>PolUVR не будет функционировать без подключения к интернету, если вы ранее не установили необходимые модели.</h3></center>"
+            )
+        # https://github.com/Politrees/PolUVR?tab=readme-ov-file#integrate-our-interface-into-your-gradio-projects
+        PolUVR_UI("models/UVR_models", "output/UVR_output")
 
     with gr.Tab("Загрузка моделей"):
         if not is_offline_mode():
