@@ -116,39 +116,18 @@ class Synthesizer(torch.nn.Module):
                     checkpointing=checkpointing,
                 )
         else:
-            if vocoder == "MRF HiFi-GAN":
-                print("MRF HiFi-GAN does not support training without pitch guidance.")
-                self.dec = None
-            elif vocoder == "RefineGAN":
-                print("RefineGAN does not support training without pitch guidance.")
-                self.dec = None
-            else:
-                self.dec = HiFiGANGenerator(
-                    inter_channels,
-                    resblock_kernel_sizes,
-                    resblock_dilation_sizes,
-                    upsample_rates,
-                    upsample_initial_channel,
-                    upsample_kernel_sizes,
-                    gin_channels=gin_channels,
-                )
-        self.enc_q = PosteriorEncoder(
-            spec_channels,
-            inter_channels,
-            hidden_channels,
-            5,
-            1,
-            16,
-            gin_channels=gin_channels,
-        )
-        self.flow = ResidualCouplingBlock(
-            inter_channels,
-            hidden_channels,
-            5,
-            1,
-            3,
-            gin_channels=gin_channels,
-        )
+            self.dec = HiFiGANGenerator(
+                inter_channels,
+                resblock_kernel_sizes,
+                resblock_dilation_sizes,
+                upsample_rates,
+                upsample_initial_channel,
+                upsample_kernel_sizes,
+                gin_channels=gin_channels,
+            )
+
+        self.enc_q = PosteriorEncoder(spec_channels, inter_channels, hidden_channels, 5, 1, 16, gin_channels=gin_channels)
+        self.flow = ResidualCouplingBlock(inter_channels, hidden_channels, 5, 1, 3, gin_channels=gin_channels)
         self.emb_g = torch.nn.Embedding(spk_embed_dim, gin_channels)
 
     def _remove_weight_norm_from(self, module):
