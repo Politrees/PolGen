@@ -49,7 +49,6 @@ with gr.Blocks(
         radius_size="lg",
     ),
 ) as PolGen:
-
     with gr.Tab("Велком/Контакты"):
         welcome_tab()
 
@@ -63,7 +62,7 @@ with gr.Blocks(
     with gr.Tab("PolUVR (UVR)"):
         if is_offline_mode():
             gr.HTML(
-                "<center><h3>PolUVR не будет функционировать без подключения к интернету, если вы ранее не установили необходимые модели.</h3></center>"
+                "<center><h3>PolUVR не будет функционировать без подключения к интернету, если вы ранее не установили необходимые модели.</h3></center>",
             )
         # https://github.com/Politrees/PolUVR?tab=readme-ov-file#integrate-our-interface-into-your-gradio-projects
         PolUVR_UI("models/UVR_models", "output/UVR_output")

@@ -1,5 +1,3 @@
-from typing import List
-
 import numpy as np
 import torch
 from librosa.filters import mel
@@ -106,7 +104,7 @@ class Encoder(torch.nn.Module):
         self.out_channel = out_channels
 
     def forward(self, x: torch.Tensor):
-        concat_tensors: List[torch.Tensor] = []
+        concat_tensors: list[torch.Tensor] = []
         x = self.bn(x)
         for i in range(self.n_encoders):
             t, x = self.layers[i](x)

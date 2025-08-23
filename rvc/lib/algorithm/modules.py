@@ -4,8 +4,7 @@ from rvc.lib.algorithm.commons import fused_add_tanh_sigmoid_multiply
 
 
 class WaveNet(torch.nn.Module):
-    """
-    WaveNet residual blocks as used in WaveGlow.
+    """WaveNet residual blocks as used in WaveGlow.
 
     Args:
         hidden_channels (int): Number of hidden channels.
@@ -14,6 +13,7 @@ class WaveNet(torch.nn.Module):
         n_layers (int): Number of convolutional layers.
         gin_channels (int, optional): Number of conditioning channels. Defaults to 0.
         p_dropout (float, optional): Dropout probability. Defaults to 0.
+
     """
 
     def __init__(
@@ -63,7 +63,7 @@ class WaveNet(torch.nn.Module):
                         padding=paddings[i],
                     ),
                     name="weight",
-                )
+                ),
             )
 
             res_skip_channels = hidden_channels if i == n_layers - 1 else 2 * hidden_channels
@@ -71,7 +71,7 @@ class WaveNet(torch.nn.Module):
                 torch.nn.utils.parametrizations.weight_norm(
                     torch.nn.Conv1d(hidden_channels, res_skip_channels, 1),
                     name="weight",
-                )
+                ),
             )
 
     def forward(self, x, x_mask, g=None):

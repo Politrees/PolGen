@@ -65,12 +65,11 @@ def quant_noise(module, p, block_size):
     is_conv = module.weight.ndim == 4
     if not is_conv:
         assert module.weight.size(1) % block_size == 0
+    elif module.kernel_size == (1, 1):
+        assert module.in_channels % block_size == 0
     else:
-        if module.kernel_size == (1, 1):
-            assert module.in_channels % block_size == 0
-        else:
-            k = module.kernel_size[0] * module.kernel_size[1]
-            assert k % block_size == 0
+        k = module.kernel_size[0] * module.kernel_size[1]
+        assert k % block_size == 0
 
     def _forward_pre_hook(mod, input):
         if mod.training:
@@ -121,7 +120,7 @@ class FairseqDropout(nn.Module):
                 self.apply_during_inference = True
 
 
-class FairseqIncrementalState(object):
+class FairseqIncrementalState:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.init_incremental_state()
@@ -130,7 +129,7 @@ class FairseqIncrementalState(object):
         self._incremental_state_id = str(uuid.uuid4())
 
     def _get_full_incremental_state_key(self, key):
-        return "{}.{}".format(self._incremental_state_id, key)
+        return f"{self._incremental_state_id}.{key}"
 
     def get_incremental_state(self, incremental_state, key):
         full_key = self._get_full_incremental_state_key(key)
@@ -301,15 +300,15 @@ class MultiheadAttention(FairseqIncrementalDecoder):
             end_idx = (i + 1) * self.head_dim
             k_proj_heads_norm.append(
                 torch.sum(torch.abs(self.k_proj.weight[start_idx:end_idx])).tolist()
-                + torch.sum(torch.abs(self.k_proj.bias[start_idx:end_idx])).tolist()
+                + torch.sum(torch.abs(self.k_proj.bias[start_idx:end_idx])).tolist(),
             )
             q_proj_heads_norm.append(
                 torch.sum(torch.abs(self.q_proj.weight[start_idx:end_idx])).tolist()
-                + torch.sum(torch.abs(self.q_proj.bias[start_idx:end_idx])).tolist()
+                + torch.sum(torch.abs(self.q_proj.bias[start_idx:end_idx])).tolist(),
             )
             v_proj_heads_norm.append(
                 torch.sum(torch.abs(self.v_proj.weight[start_idx:end_idx])).tolist()
-                + torch.sum(torch.abs(self.v_proj.bias[start_idx:end_idx])).tolist()
+                + torch.sum(torch.abs(self.v_proj.bias[start_idx:end_idx])).tolist(),
             )
 
         heads_norm = []
@@ -552,7 +551,9 @@ class MultiheadAttention(FairseqIncrementalDecoder):
 
         if self.encoder_decoder_attention and bsz != kv_bsz:
             attn_weights = torch.einsum(
-                "bxhtd,bhsd->bxhts", q.view((kv_bsz, -1, self.num_heads) + q.size()[1:]), k.view((kv_bsz, self.num_heads) + k.size()[1:])
+                "bxhtd,bhsd->bxhts",
+                q.view((kv_bsz, -1, self.num_heads) + q.size()[1:]),
+                k.view((kv_bsz, self.num_heads) + k.size()[1:]),
             )
             attn_weights = attn_weights.reshape((-1,) + attn_weights.size()[-2:])
         else:
@@ -570,7 +571,8 @@ class MultiheadAttention(FairseqIncrementalDecoder):
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
             attn_weights = (
                 attn_weights.view(kv_bsz, -1, self.num_heads, tgt_len, src_len).masked_fill(
-                    key_padding_mask.unsqueeze(1).unsqueeze(2).unsqueeze(3).to(torch.bool), float("-inf")
+                    key_padding_mask.unsqueeze(1).unsqueeze(2).unsqueeze(3).to(torch.bool),
+                    float("-inf"),
                 )
                 if not is_tpu
                 else attn_weights.transpose(0, 2).masked_fill(key_padding_mask, float("-inf")).transpose(0, 2)
@@ -643,7 +645,7 @@ class MultiheadAttention(FairseqIncrementalDecoder):
                     if self.encoder_decoder_attention:
                         if input_buffer_k.size(0) * self.beam_size == new_order.size(0):
                             return incremental_state
-                        elif self.beam_size > 1:
+                        if self.beam_size > 1:
                             input_buffer[k] = input_buffer_k.index_select(0, new_order.reshape(-1, self.beam_size)[:, 0] // self.beam_size)
                         else:
                             input_buffer[k] = input_buffer_k.index_select(0, new_order)
@@ -802,8 +804,7 @@ def compute_mask_indices(
         if sum(lengths) == 0:
             if mask_type == "static":
                 raise ValueError
-            else:
-                lengths = [min(mask_length, sz - 1)]
+            lengths = [min(mask_length, sz - 1)]
 
         if no_overlap:
             mask_idc = []
@@ -887,7 +888,7 @@ def prune_state_dict(state_dict, model_cfg):
         for i in range(len(keep_layers)):
             mapping_dict[str(keep_layers[i])] = str(i)
 
-        return {"substitution_regex": re.compile(r"^{layer}.*\.layers\.(\d+)".format(layer=layer_name)), "mapping_dict": mapping_dict}
+        return {"substitution_regex": re.compile(rf"^{layer_name}.*\.layers\.(\d+)"), "mapping_dict": mapping_dict}
 
     pruning_passes, new_state_dict = [], {}
     if encoder_layers_to_keep:
@@ -937,22 +938,19 @@ def get_activation_fn(activation):
 
     if activation == "relu":
         return F.relu
-    elif activation == "relu_squared":
+    if activation == "relu_squared":
         return relu_squared
-    elif activation == "gelu":
+    if activation == "gelu":
         return gelu
-    elif activation == "gelu_fast":
+    if activation == "gelu_fast" or activation == "gelu_accurate":
         return gelu_accurate
-    elif activation == "gelu_accurate":
-        return gelu_accurate
-    elif activation == "tanh":
+    if activation == "tanh":
         return torch.tanh
-    elif activation == "linear":
+    if activation == "linear":
         return lambda x: x
-    elif activation == "swish":
+    if activation == "swish":
         return nn.SiLU
-    else:
-        raise RuntimeError
+    raise RuntimeError
 
 
 class SamePad(nn.Module):
@@ -1001,7 +999,12 @@ class TransformerSentenceEncoderLayer(nn.Module):
         if self.layer_norm_first:
             x = self.self_attn_layer_norm(x)
             x, attn = self.self_attn(
-                query=x, key=x, value=x, key_padding_mask=self_attn_padding_mask, attn_mask=self_attn_mask, need_weights=False
+                query=x,
+                key=x,
+                value=x,
+                key_padding_mask=self_attn_padding_mask,
+                attn_mask=self_attn_mask,
+                need_weights=False,
             )
             x = residual + self.dropout1(x)
             residual = x
@@ -1066,7 +1069,7 @@ class AdapterFast(nn.Module):
         )
 
     def extra_repr(self):
-        return "adapter={}, input_dim={}, hidden_dim={}".format(self.adapter_num, self.input_dim, self.hidden_dim)
+        return f"adapter={self.adapter_num}, input_dim={self.input_dim}, hidden_dim={self.hidden_dim}"
 
 
 class FeedForwardModule(nn.Module):
@@ -1091,7 +1094,13 @@ class ConvolutionModule(nn.Module):
         self.pointwise_conv1 = nn.Conv1d(embed_dim, 2 * channels, kernel_size=1, stride=1, padding=0, bias=bias)
         self.glu = nn.GLU(dim=1)
         self.depthwise_conv = nn.Conv1d(
-            channels, channels, depthwise_kernel_size, stride=1, padding=(depthwise_kernel_size - 1) // 2, groups=channels, bias=bias
+            channels,
+            channels,
+            depthwise_kernel_size,
+            stride=1,
+            padding=(depthwise_kernel_size - 1) // 2,
+            groups=channels,
+            bias=bias,
         )
         self.batch_norm = nn.BatchNorm1d(channels)
         self.activation = get_activation_fn(activation_fn)(channels)
@@ -1101,8 +1110,8 @@ class ConvolutionModule(nn.Module):
     def forward(self, x):
         return self.dropout(
             self.pointwise_conv2(
-                self.activation(self.batch_norm(self.depthwise_conv(self.glu(self.pointwise_conv1(self.layer_norm(x).transpose(1, 2))))))
-            )
+                self.activation(self.batch_norm(self.depthwise_conv(self.glu(self.pointwise_conv1(self.layer_norm(x).transpose(1, 2)))))),
+            ),
         ).transpose(1, 2)
 
 
@@ -1166,7 +1175,7 @@ class ESPNETMultiHeadedAttention(nn.Module):
             self.attn = torch.softmax(scores, dim=-1)
 
         return self.linear_out(
-            (torch.matmul(self.dropout(self.attn), value).transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k))
+            torch.matmul(self.dropout(self.attn), value).transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k),
         )
 
     def forward(self, query, key, value, key_padding_mask=None, **kwargs):
@@ -1208,7 +1217,7 @@ class RelPositionMultiHeadedAttention(ESPNETMultiHeadedAttention):
                         torch.matmul(
                             (q + self.pos_bias_v).transpose(1, 2),
                             self.linear_pos(pos_emb).view(pos_emb.size(0), -1, self.h, self.d_k).transpose(1, 2).transpose(-2, -1),
-                        )
+                        ),
                     )
                 )
                 / math.sqrt(self.d_k),
@@ -1287,7 +1296,12 @@ class ConformerEncoderLayer(nn.Module):
         x = self.self_attn_layer_norm(x)
         if self.pos_enc_type == "rel_pos":
             x, attn = self.self_attn(
-                query=x, key=x, value=x, key_padding_mask=encoder_padding_mask, pos_emb=position_emb, need_weights=False
+                query=x,
+                key=x,
+                value=x,
+                key_padding_mask=encoder_padding_mask,
+                pos_emb=position_emb,
+                need_weights=False,
             )
         else:
             x, attn = self.self_attn(query=x, key=x, value=x, key_padding_mask=encoder_padding_mask, need_weights=False)
@@ -1338,7 +1352,11 @@ class TransformerSentenceEncoderWithAdapterLayer(TransformerSentenceEncoderLayer
 
     def forward(self, x, self_attn_mask=None, self_attn_padding_mask=None, need_weights=False, att_args=None, corpus_key=None):
         x, (attn, layer_result) = super().forward(
-            x=x, self_attn_mask=self_attn_mask, self_attn_padding_mask=self_attn_padding_mask, need_weights=need_weights, att_args=att_args
+            x=x,
+            self_attn_mask=self_attn_mask,
+            self_attn_padding_mask=self_attn_padding_mask,
+            need_weights=need_weights,
+            att_args=att_args,
         )
         assert corpus_key is not None
         assert len(set(corpus_key)) == 1
@@ -1384,11 +1402,8 @@ class TransformerEncoder(nn.Module):
             )
         elif args.layer_type == "trf_adp":
             use_adp = False
-            if args.adp_trf_idx == "all":
+            if args.adp_trf_idx == "all" or kwargs.get("layer_idx") in list(range(*[int(g) for g in args.adp_trf_idx.split(":")])):
                 use_adp = True
-            else:
-                if kwargs.get("layer_idx", None) in list(range(*[int(g) for g in args.adp_trf_idx.split(":")])):
-                    use_adp = True
 
             layer = (
                 TransformerSentenceEncoderWithAdapterLayer(
@@ -1441,7 +1456,7 @@ class TransformerEncoder(nn.Module):
                             nn.GELU(),
                         )
                         for _ in range(l)
-                    ]
+                    ],
                 )
 
             self.pos_conv = make_conv_block(self.embedding_dim, k, args.conv_pos_groups, num_layers)
@@ -1561,10 +1576,9 @@ class ConvFeatureExtractionModel(nn.Module):
                     nn.Sequential(TransposeLast(), Fp32LayerNorm(dim, elementwise_affine=True), TransposeLast()),
                     nn.GELU(),
                 )
-            elif is_group_norm:
+            if is_group_norm:
                 return nn.Sequential(make_conv(), nn.Dropout(p=dropout), Fp32GroupNorm(dim, dim, affine=True), nn.GELU())
-            else:
-                return nn.Sequential(make_conv(), nn.Dropout(p=dropout), nn.GELU())
+            return nn.Sequential(make_conv(), nn.Dropout(p=dropout), nn.GELU())
 
         in_d = 1
         self.conv_layers = nn.ModuleList()
@@ -1580,7 +1594,7 @@ class ConvFeatureExtractionModel(nn.Module):
                     is_layer_norm=mode == "layer_norm",
                     is_group_norm=mode == "default" and i == 0,
                     conv_bias=conv_bias,
-                )
+                ),
             )
             in_d = dim
 
@@ -1783,7 +1797,10 @@ class HubertModel(BaseFairseqModel):
         feature_enc_layers = eval(cfg.conv_feature_layers)
         self.embed = feature_enc_layers[-1][0]
         self.feature_extractor = ConvFeatureExtractionModel(
-            conv_layers=feature_enc_layers, dropout=0.0, mode=cfg.extractor_mode, conv_bias=cfg.conv_bias
+            conv_layers=feature_enc_layers,
+            dropout=0.0,
+            mode=cfg.extractor_mode,
+            conv_bias=cfg.conv_bias,
         )
         feature_ds_rate = np.prod([s for _, _, s in feature_enc_layers])
         self.feat2tar_ratio = cfg.label_rate * feature_ds_rate / 16000
@@ -1837,7 +1854,7 @@ class HubertModel(BaseFairseqModel):
                     min_masks=2,
                     no_overlap=self.no_mask_overlap,
                     min_space=self.mask_min_space,
-                )
+                ),
             ).to(x.device)
             x[mask_indices] = self.mask_emb
         else:
@@ -1856,7 +1873,7 @@ class HubertModel(BaseFairseqModel):
                             self.mask_channel_other,
                             no_overlap=self.no_mask_channel_overlap,
                             min_space=self.mask_channel_min_space,
-                        )
+                        ),
                     )
                     .to(x.device)
                     .unsqueeze(1)
@@ -1938,7 +1955,8 @@ class HubertModel(BaseFairseqModel):
                     zip(
                         proj_x_m.chunk(len(target_list), dim=-1) if self.untie_final_proj else [proj_x_m for _ in range(len(target_list))],
                         target_list,
-                    )
+                        strict=False,
+                    ),
                 )
             ]
         else:
@@ -1953,7 +1971,8 @@ class HubertModel(BaseFairseqModel):
                     zip(
                         proj_x_u.chunk(len(target_list), dim=-1) if self.untie_final_proj else [proj_x_u for _ in range(len(target_list))],
                         target_list,
-                    )
+                        strict=False,
+                    ),
                 )
             ]
         else:

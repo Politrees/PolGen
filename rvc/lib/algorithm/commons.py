@@ -1,16 +1,14 @@
-from typing import Optional
-
 import torch
 
 
 def init_weights(m, mean=0.0, std=0.01):
-    """
-    Initialize the weights of a module.
+    """Initialize the weights of a module.
 
     Args:
         m: The module to initialize.
         mean: The mean of the normal distribution.
         std: The standard deviation of the normal distribution.
+
     """
     classname = m.__class__.__name__
     if classname.find("Conv") != -1:
@@ -18,22 +16,22 @@ def init_weights(m, mean=0.0, std=0.01):
 
 
 def get_padding(kernel_size, dilation=1):
-    """
-    Calculate the padding needed for a convolution.
+    """Calculate the padding needed for a convolution.
 
     Args:
         kernel_size: The size of the kernel.
         dilation: The dilation of the convolution.
+
     """
     return int((kernel_size * dilation - dilation) / 2)
 
 
 def convert_pad_shape(pad_shape):
-    """
-    Convert the pad shape to a list of integers.
+    """Convert the pad shape to a list of integers.
 
     Args:
         pad_shape: The pad shape..
+
     """
     l = pad_shape[::-1]
     pad_shape = [item for sublist in l for item in sublist]
@@ -41,14 +39,14 @@ def convert_pad_shape(pad_shape):
 
 
 def slice_segments(x: torch.Tensor, ids_str: torch.Tensor, segment_size: int = 4, dim: int = 2):
-    """
-    Slice segments from a tensor, handling tensors with different numbers of dimensions.
+    """Slice segments from a tensor, handling tensors with different numbers of dimensions.
 
     Args:
         x (torch.Tensor): The tensor to slice.
         ids_str (torch.Tensor): The starting indices of the segments.
         segment_size (int, optional): The size of each segment. Defaults to 4.
         dim (int, optional): The dimension to slice across (2D or 3D tensors). Defaults to 2.
+
     """
     if dim == 2:
         ret = torch.zeros_like(x[:, :segment_size])
@@ -67,13 +65,13 @@ def slice_segments(x: torch.Tensor, ids_str: torch.Tensor, segment_size: int = 4
 
 
 def rand_slice_segments(x, x_lengths=None, segment_size=4):
-    """
-    Randomly slice segments from a tensor.
+    """Randomly slice segments from a tensor.
 
     Args:
         x: The tensor to slice.
         x_lengths: The lengths of the sequences.
         segment_size: The size of each segment.
+
     """
     b, _, t = x.size()
     if x_lengths is None:
@@ -86,13 +84,13 @@ def rand_slice_segments(x, x_lengths=None, segment_size=4):
 
 @torch.jit.script
 def fused_add_tanh_sigmoid_multiply(input_a, input_b, n_channels):
-    """
-    Fused add tanh sigmoid multiply operation.
+    """Fused add tanh sigmoid multiply operation.
 
     Args:
         input_a: The first input tensor.
         input_b: The second input tensor.
         n_channels: The number of channels.
+
     """
     n_channels_int = n_channels[0]
     in_act = input_a + input_b
@@ -102,13 +100,13 @@ def fused_add_tanh_sigmoid_multiply(input_a, input_b, n_channels):
     return acts
 
 
-def sequence_mask(length: torch.Tensor, max_length: Optional[int] = None):
-    """
-    Generate a sequence mask.
+def sequence_mask(length: torch.Tensor, max_length: int | None = None):
+    """Generate a sequence mask.
 
     Args:
         length: The lengths of the sequences.
         max_length: The maximum length of the sequences.
+
     """
     if max_length is None:
         max_length = length.max()

@@ -27,7 +27,7 @@ def download_file(url, zip_name, progress=gr.Progress(track_tqdm=True)):
         else:
             raise ValueError(f"Неподдерживаемый источник: {url}")
     except Exception as e:
-        raise gr.Error(f"Ошибка при скачивании: {str(e)}")
+        raise gr.Error(f"Ошибка при скачивании: {e!s}")
 
 
 # Скачивание файла с Google Drive

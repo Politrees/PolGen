@@ -38,9 +38,7 @@ class AudioProcessor:
 # Класс для преобразования голоса
 class VC:
     def __init__(self, tgt_sr, config):
-        """
-        Инициализация параметров для преобразования голоса.
-        """
+        """Инициализация параметров для преобразования голоса."""
         self.x_pad = config.x_pad
         self.x_query = config.x_query
         self.x_center = config.x_center
@@ -70,9 +68,7 @@ class VC:
         autotune,
         autotune_strength,
     ):
-        """
-        Получает F0 с использованием выбранного метода.
-        """
+        """Получает F0 с использованием выбранного метода."""
         f0 = None
         f0_mel_min = 1127 * np.log(1 + f0_min / 700)
         f0_mel_max = 1127 * np.log(1 + f0_max / 700)
@@ -128,9 +124,7 @@ class VC:
         version,
         protect,
     ):
-        """
-        Преобразует аудио с использованием модели.
-        """
+        """Преобразует аудио с использованием модели."""
         feats = torch.from_numpy(audio0).float()
         if feats.dim() == 2:
             feats = feats.mean(-1)
@@ -213,9 +207,7 @@ class VC:
         autotune,
         autotune_strength,
     ):
-        """
-        Основной конвейер для преобразования аудио.
-        """
+        """Основной конвейер для преобразования аудио."""
         index = big_npy = None
         if file_index and os.path.exists(file_index) and index_rate != 0:
             try:
@@ -289,7 +281,7 @@ class VC:
                     index_rate,
                     version,
                     protect,
-                )[self.t_pad_tgt : -self.t_pad_tgt]
+                )[self.t_pad_tgt : -self.t_pad_tgt],
             )
             s = t
 
@@ -309,7 +301,7 @@ class VC:
                 index_rate,
                 version,
                 protect,
-            )[self.t_pad_tgt : -self.t_pad_tgt]
+            )[self.t_pad_tgt : -self.t_pad_tgt],
         )
 
         audio_opt = np.concatenate(audio_opt)

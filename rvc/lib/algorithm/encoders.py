@@ -1,5 +1,4 @@
 import math
-from typing import Optional
 
 import torch
 
@@ -10,8 +9,7 @@ from rvc.lib.algorithm.normalization import LayerNorm
 
 
 class Encoder(torch.nn.Module):
-    """
-    Encoder module for the Transformer model.
+    """Encoder module for the Transformer model.
 
     Args:
         hidden_channels (int): Number of hidden channels in the encoder.
@@ -21,6 +19,7 @@ class Encoder(torch.nn.Module):
         kernel_size (int, optional): Kernel size of the convolution layers in the feed-forward network. Defaults to 1.
         p_dropout (float, optional): Dropout probability. Defaults to 0.0.
         window_size (int, optional): Window size for relative positional encoding. Defaults to 10.
+
     """
 
     def __init__(
@@ -49,7 +48,7 @@ class Encoder(torch.nn.Module):
                     window_size=window_size,
                 )
                 for _ in range(n_layers)
-            ]
+            ],
         )
         self.norm_layers_1 = torch.nn.ModuleList([LayerNorm(hidden_channels) for _ in range(n_layers)])
         self.ffn_layers = torch.nn.ModuleList(
@@ -62,7 +61,7 @@ class Encoder(torch.nn.Module):
                     p_dropout=p_dropout,
                 )
                 for _ in range(n_layers)
-            ]
+            ],
         )
         self.norm_layers_2 = torch.nn.ModuleList([LayerNorm(hidden_channels) for _ in range(n_layers)])
 
@@ -83,8 +82,7 @@ class Encoder(torch.nn.Module):
 
 
 class TextEncoder(torch.nn.Module):
-    """
-    Text Encoder with configurable embedding dimension.
+    """Text Encoder with configurable embedding dimension.
 
     Args:
         out_channels (int): Output channels of the encoder.
@@ -96,6 +94,7 @@ class TextEncoder(torch.nn.Module):
         p_dropout (float): Dropout probability.
         embedding_dim (int): Embedding dimension for phone embeddings (v1 = 256, v2 = 768).
         f0 (bool, optional): Whether to use F0 embedding. Defaults to True.
+
     """
 
     def __init__(
@@ -120,7 +119,7 @@ class TextEncoder(torch.nn.Module):
         self.encoder = Encoder(hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout)
         self.proj = torch.nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
-    def forward(self, phone: torch.Tensor, pitch: Optional[torch.Tensor], lengths: torch.Tensor):
+    def forward(self, phone: torch.Tensor, pitch: torch.Tensor | None, lengths: torch.Tensor):
         x = self.emb_phone(phone)
         if pitch is not None and self.emb_pitch:
             x += self.emb_pitch(pitch)
@@ -138,8 +137,7 @@ class TextEncoder(torch.nn.Module):
 
 
 class PosteriorEncoder(torch.nn.Module):
-    """
-    Posterior Encoder for inferring latent representation.
+    """Posterior Encoder for inferring latent representation.
 
     Args:
         in_channels (int): Number of channels in the input.
@@ -149,6 +147,7 @@ class PosteriorEncoder(torch.nn.Module):
         dilation_rate (int): Dilation rate of the convolutional layers.
         n_layers (int): Number of layers in the encoder.
         gin_channels (int, optional): Number of channels for the global conditioning input. Defaults to 0.
+
     """
 
     def __init__(
@@ -173,7 +172,7 @@ class PosteriorEncoder(torch.nn.Module):
         )
         self.proj = torch.nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
-    def forward(self, x: torch.Tensor, x_lengths: torch.Tensor, g: Optional[torch.Tensor] = None):
+    def forward(self, x: torch.Tensor, x_lengths: torch.Tensor, g: torch.Tensor | None = None):
         x_mask = sequence_mask(x_lengths, x.size(2)).unsqueeze(1).to(x.dtype)
 
         x = self.pre(x) * x_mask

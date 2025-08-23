@@ -5,7 +5,11 @@ import urllib.request
 
 import gradio as gr
 
-from rvc.modules.model_manager import download_from_url, upload_separate_files, upload_zip_file
+from rvc.modules.model_manager import (
+    download_from_url,
+    upload_separate_files,
+    upload_zip_file,
+)
 
 EMBEDDERS_DIR = os.path.join(os.getcwd(), "rvc", "models", "embedders")
 HUBERT_BASE_PATH = os.path.join(EMBEDDERS_DIR, "hubert_base.pt")
@@ -57,7 +61,7 @@ def download_and_replace_model(model_name, custom_url, progress=gr.Progress()):
         os.rename(tmp_model_path, HUBERT_BASE_PATH)
         return f'Модель "{model_name}" успешно установлена.'
     except Exception as e:
-        return f'Ошибка при установке модели "{model_name}": {str(e)}'
+        return f'Ошибка при установке модели "{model_name}": {e!s}'
 
 
 def url_zip_download(output_message):
@@ -71,7 +75,7 @@ def url_zip_download(output_message):
             "<a href='https://mega.nz/' target='_blank'>Mega</a>, "
             "<a href='https://disk.yandex.ru/' target='_blank'>Яндекс Диск, </a>"
             "<a href='https://www.dropbox.com' target='_blank'>Dropbox</a>"
-            "</h3>"
+            "</h3>",
         )
         with gr.Column():
             with gr.Group():
@@ -129,7 +133,7 @@ def files_upload(output_message):
 
 def install_hubert_tab():
     gr.HTML(
-        "<center><h3>Не рекомендуется вносить изменения в этот раздел, если вы не проводили обучение RVC модели с использованием пользователькой HuBERT-модели.</h3></center>"
+        "<center><h3>Не рекомендуется вносить изменения в этот раздел, если вы не проводили обучение RVC модели с использованием пользователькой HuBERT-модели.</h3></center>",
     )
     with gr.Row(variant="panel", equal_height=True):
         with gr.Column(variant="panel"):

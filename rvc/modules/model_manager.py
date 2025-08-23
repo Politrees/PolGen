@@ -72,7 +72,7 @@ def download_from_url(url, dir_name, progress=gr.Progress()):
         return f"[+] Модель {dir_name} успешно загружена!"
     except Exception as e:
         # Обработка ошибок при загрузке модели
-        raise gr.Error(f"Ошибка при загрузке модели: {str(e)}")
+        raise gr.Error(f"Ошибка при загрузке модели: {e!s}")
 
 
 # Функция для загрузки и распаковки zip-файла модели через интерфейс
@@ -88,7 +88,7 @@ def upload_zip_file(zip_path, dir_name, progress=gr.Progress()):
         return f"[+] Модель {dir_name} успешно загружена!"
     except Exception as e:
         # Обработка ошибок при загрузке и распаковке
-        raise gr.Error(f"Ошибка при загрузке модели: {str(e)}")
+        raise gr.Error(f"Ошибка при загрузке модели: {e!s}")
 
 
 # Функция для загрузки отдельных файлов модели (.pth и .index)
@@ -115,7 +115,7 @@ def upload_separate_files(pth_file, index_file, dir_name, progress=gr.Progress()
         return f"[+] Модель {dir_name} успешно загружена!"
     except Exception as e:
         # Обработка ошибок при загрузке файлов
-        raise gr.Error(f"Ошибка при загрузке модели: {str(e)}")
+        raise gr.Error(f"Ошибка при загрузке модели: {e!s}")
 
 
 # Основная функция для вызова из командной строки
@@ -136,7 +136,7 @@ def main():
         result = download_from_url(url, dir_name, progress=ConsoleProgress())
         print(result)
     except gr.Error as e:
-        print(f"Ошибка: {str(e)}")
+        print(f"Ошибка: {e!s}")
         sys.exit(1)
 
 

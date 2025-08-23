@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 import torch
 from torch.nn.utils import remove_weight_norm
@@ -10,8 +8,7 @@ from rvc.lib.algorithm.residuals import LRELU_SLOPE, ResBlock
 
 
 class HiFiGANGenerator(torch.nn.Module):
-    """
-    HiFi-GAN Generator module for audio synthesis.
+    """HiFi-GAN Generator module for audio synthesis.
 
     This module implements the generator part of the HiFi-GAN architecture,
     which uses transposed convolutions for upsampling and residual blocks for
@@ -25,6 +22,7 @@ class HiFiGANGenerator(torch.nn.Module):
         upsample_initial_channel (int): Number of output channels from the initial convolutional layer, which is also the input to the first upsampling layer.
         upsample_kernel_sizes (list): List of kernel sizes for the transposed convolutional layers used for upsampling.
         gin_channels (int, optional): Number of input channels for the global conditioning. If 0, no global conditioning is used. Defaults to 0.
+
     """
 
     def __init__(
@@ -45,7 +43,7 @@ class HiFiGANGenerator(torch.nn.Module):
         self.ups = torch.nn.ModuleList()
         self.resblocks = torch.nn.ModuleList()
 
-        for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
+        for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes, strict=False)):
             self.ups.append(
                 weight_norm(
                     torch.nn.ConvTranspose1d(
@@ -54,11 +52,11 @@ class HiFiGANGenerator(torch.nn.Module):
                         k,
                         u,
                         padding=(k - u) // 2,
-                    )
-                )
+                    ),
+                ),
             )
             ch = upsample_initial_channel // (2 ** (i + 1))
-            for _, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilation_sizes)):
+            for _, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilation_sizes, strict=False)):
                 self.resblocks.append(ResBlock(ch, k, d))
 
         self.conv_post = torch.nn.Conv1d(ch, 1, 7, 1, padding=3, bias=False)
@@ -67,7 +65,7 @@ class HiFiGANGenerator(torch.nn.Module):
         if gin_channels != 0:
             self.cond = torch.nn.Conv1d(gin_channels, upsample_initial_channel, 1)
 
-    def forward(self, x: torch.Tensor, g: Optional[torch.Tensor] = None):
+    def forward(self, x: torch.Tensor, g: torch.Tensor | None = None):
         # new tensor
         x = self.conv_pre(x)
 
@@ -107,8 +105,7 @@ class HiFiGANGenerator(torch.nn.Module):
 
 
 class SineGenerator(torch.nn.Module):
-    """
-    Sine wave generator with optional harmonic overtones and noise.
+    """Sine wave generator with optional harmonic overtones and noise.
 
     This module generates sine waves for a fundamental frequency and its harmonics.
     It can also add Gaussian noise and apply a voiced/unvoiced mask.
@@ -119,6 +116,7 @@ class SineGenerator(torch.nn.Module):
         sine_amplitude (float, optional): The amplitude of the sine wave components. Defaults to 0.1.
         noise_stddev (float, optional): The standard deviation of the additive Gaussian noise. Defaults to 0.003.
         voiced_threshold (float, optional): The threshold for the fundamental frequency (F0) to determine if a frame is voiced. Defaults to 0.0.
+
     """
 
     def __init__(
@@ -138,22 +136,22 @@ class SineGenerator(torch.nn.Module):
         self.waveform_dim = self.num_harmonics + 1  # fundamental + harmonics
 
     def _compute_voiced_unvoiced(self, f0: torch.Tensor):
-        """
-        Generates a binary mask indicating voiced/unvoiced frames based on the fundamental frequency.
+        """Generates a binary mask indicating voiced/unvoiced frames based on the fundamental frequency.
 
         Args:
             f0 (torch.Tensor): Fundamental frequency tensor of shape (batch_size, length).
+
         """
         uv_mask = (f0 > self.voiced_threshold).float()
         return uv_mask
 
     def _generate_sine_wave(self, f0: torch.Tensor, upsampling_factor: int):
-        """
-        Generates sine waves for the fundamental frequency and its harmonics.
+        """Generates sine waves for the fundamental frequency and its harmonics.
 
         Args:
             f0 (torch.Tensor): Fundamental frequency tensor of shape (batch_size, length, 1).
             upsampling_factor (int): The factor by which to upsample the sine wave.
+
         """
         batch_size, _, _ = f0.shape
 
