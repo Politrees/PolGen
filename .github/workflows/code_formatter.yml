@@ -9,7 +9,7 @@ on:
       - '.github/workflows/code_formatter.yml'
 
 jobs:
-  push_format:
+  format_code:
     runs-on: ubuntu-latest
 
     permissions:
@@ -25,45 +25,40 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.10'
 
       - name: Install dependencies
-        run: |
-          pip install --no-cache-dir uv
-          uv pip install --no-cache-dir -U black isort autoflake -q --system
+        run: pip install ruff
 
-      - name: Run autoflake
-        run: autoflake --in-place --recursive .
+      - name: Run Ruff Linter (with auto-fix)
+        run: ruff check $(git ls-files '*.py') --fix --target-version py310 --select ALL --no-preview || true
 
-      - name: Run isort
-        run: isort .
-
-      - name: Run Black
-        run: black . --line-length 140
+      - name: Run Ruff Formatter
+        run: ruff format $(git ls-files '*.py') --target-version py310 --line-length 140 --no-preview || true
 
       - name: Check for changes
         id: changes
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::set-output name=has_changes::true"
+          if git diff --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
-            echo "::set-output name=has_changes::false"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Commit changes
-        if: steps.changes.outputs.has_changes == 'true'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add --all
-          git commit -m "Automatic code formatting"
 
       - name: Create Pull Request
         if: steps.changes.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v7
         with:
+          commit-message: "style(ruff): автоматическое форматирование кода"
+          title: "🎨 Автоматическое форматирование кода"
+          body: |
+            Этот Pull Request был создан автоматически GitHub Actions для применения единых стилей оформления кода.
+
+            🔧 Форматирование выполнено с помощью [`Ruff`](https://github.com/astral-sh/ruff):
+            > - Автоматическое исправление стиля и линтинга (`ruff check --fix`)
+            > - Применение форматтера (`ruff format`)
+
+            ✨ Изменения затрагивают только стиль кода, логика работы не изменена.
+            > Целевая версия Python: **3.10**
+          branch: "formatter/${{ github.ref_name }}"
           delete-branch: true
-          body: "Automatic code formatting"
-          title: "Automatic code formatting"
-          commit-message: "Automatic code formatting"
-          branch: formatter/PolGen
