@@ -1,43 +1,36 @@
-# Установка необходимых файлов, если их нет
-from assets.model_installer import check_and_install_models
-
-check_and_install_models()
-
-print("\nЗапуск интерфейса PolGen. Подождите...\n")
-
 import logging
 import os
 import sys
 import warnings
 from typing import Any
 
-# Настройка окружения
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
-
-# Настройка логирования и подавление предупреждений
-logging.basicConfig(level=logging.WARNING)
-warnings.filterwarnings("ignore")
+# Configuring the environment and logging
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"   # Disable unnecessary TensorFlow logs
+os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"  # Disabling Gradio analytics
+logging.basicConfig(level=logging.WARNING)  # Disable all logs, except WARNING and above
+warnings.filterwarnings("ignore")  # Disable all warnings
 
 import gradio as gr
 from PolUVR.utils import PolUVR_UI
 
+from assets.model_installer import check_and_install_models
 from tabs.components.modules import output_message
 from tabs.inference import edge_tts_tab, inference_tab
 from tabs.install import files_upload, install_hubert_tab, url_zip_download, zip_upload
 from tabs.welcome import welcome_tab
 
+# Constants
 DEFAULT_SERVER_NAME = "127.0.0.1"
 DEFAULT_PORT = 4000
 MAX_PORT_ATTEMPTS = 10
 
-output_message_component = output_message()
+OUTPUT_MESSAGE_COMPONENT = output_message()
 
 
 def is_offline_mode() -> bool:
     return "--offline" in sys.argv
 
-
+# Gradio Interface
 with gr.Blocks(
     title="PolGen - Politrees" if not is_offline_mode() else "PolGen (offline) - Politrees",
     css="footer{display:none !important}",
@@ -70,17 +63,18 @@ with gr.Blocks(
     with gr.Tab("Загрузка моделей"):
         if not is_offline_mode():
             with gr.Tab("Загрузка RVC моделей"):
-                url_zip_download(output_message_component)
-                zip_upload(output_message_component)
-                files_upload(output_message_component)
-                output_message_component.render()
+                url_zip_download(OUTPUT_MESSAGE_COMPONENT)
+                zip_upload(OUTPUT_MESSAGE_COMPONENT)
+                files_upload(OUTPUT_MESSAGE_COMPONENT)
+                OUTPUT_MESSAGE_COMPONENT.render()
+
             with gr.Tab("Загрузка HuBERT моделей"):
                 install_hubert_tab()
         else:
             with gr.Tab("Загрузка RVC моделей"):
-                zip_upload(output_message_component)
-                files_upload(output_message_component)
-                output_message_component.render()
+                zip_upload(OUTPUT_MESSAGE_COMPONENT)
+                files_upload(OUTPUT_MESSAGE_COMPONENT)
+                OUTPUT_MESSAGE_COMPONENT.render()
 
 
 def launch_gradio(server_name: str, server_port: int) -> None:
@@ -103,6 +97,9 @@ def get_value_from_args(key: str, default: Any = None) -> Any:
 
 
 if __name__ == "__main__":
+    print("\nЗапуск интерфейса PolGen. Подождите...\n")
+    check_and_install_models()  # Checking and installing models
+
     port = int(get_value_from_args("--port", DEFAULT_PORT))
     server = get_value_from_args("--server-name", DEFAULT_SERVER_NAME)
 

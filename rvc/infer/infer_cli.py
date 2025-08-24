@@ -1,20 +1,15 @@
-# Установка необходимых файлов, если их нет
-from assets.model_installer import check_and_install_models
-
-check_and_install_models()
-
 import argparse
 import logging
 import os
 import warnings
 
-# Настройка окружения
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+# Configuring the environment and logging
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"   # Disable unnecessary TensorFlow logs
+os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"  # Disabling Gradio analytics
+logging.basicConfig(level=logging.WARNING)  # Disable all logs, except WARNING and above
+warnings.filterwarnings("ignore")  # Disable all warnings
 
-# Настройка логирования и подавление предупреждений
-logging.basicConfig(level=logging.WARNING)
-warnings.filterwarnings("ignore")
-
+from assets.model_installer import check_and_install_models
 from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
 
 
@@ -105,4 +100,5 @@ def main():
 
 
 if __name__ == "__main__":
+    check_and_install_models()  # Checking and installing models
     main()
