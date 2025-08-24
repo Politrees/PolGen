@@ -73,21 +73,17 @@ class VC:
         f0_mel_min = 1127 * np.log(1 + f0_min / 700)
         f0_mel_max = 1127 * np.log(1 + f0_max / 700)
 
-        if f0_method == "crepe":
+        if f0_method in ("crepe", "crepe-tiny"):
             model = CREPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
-            f0 = model.get_f0(audio, f0_min, f0_max, p_len, "full")
-            del model
-        elif f0_method == "crepe-tiny":
-            model = CREPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
-            f0 = model.get_f0(audio, f0_min, f0_max, p_len, "tiny")
-            del model
-        elif f0_method == "fcpe":
-            model = FCPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
-            f0 = model.get_f0(audio, p_len)
+            f0 = model.get_f0(audio, f0_min, f0_max, p_len, ("full" if f0_method == "crepe" else "tiny"))
             del model
         elif f0_method in ("rmvpe", "rmvpe+"):
             model = RMVPE(device=self.device, sample_rate=self.sample_rate)
             f0 = model.get_f0(audio, f0_method)
+            del model
+        elif f0_method == "fcpe":
+            model = FCPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
+            f0 = model.get_f0(audio, p_len)
             del model
 
         if f0 is None:

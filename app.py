@@ -97,7 +97,7 @@ def get_value_from_args(key: str, default: Any = None) -> Any:
 
 
 if __name__ == "__main__":
-    print("\nЗапуск интерфейса PolGen. Подождите...\n")
+    print("\nЗапуск интерфейса PolGen. Подождите...")
     check_and_install_models()  # Checking and installing models
 
     port = int(get_value_from_args("--port", DEFAULT_PORT))
