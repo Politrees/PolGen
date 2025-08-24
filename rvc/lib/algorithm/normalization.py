@@ -2,12 +2,12 @@ import torch
 
 
 class LayerNorm(torch.nn.Module):
-    """
-    Layer normalization module.
+    """Layer normalization module.
 
     Args:
         channels (int): Number of channels.
         eps (float, optional): Epsilon value for numerical stability. Defaults to 1e-5.
+
     """
 
     def __init__(self, channels: int, eps: float = 1e-5):

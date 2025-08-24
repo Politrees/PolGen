@@ -1,5 +1,4 @@
 import math
-from typing import Optional
 
 import numpy as np
 import torch
@@ -11,8 +10,7 @@ LRELU_SLOPE = 0.1
 
 
 class MRFLayer(torch.nn.Module):
-    """
-    A single layer of the Multi-Receptive Field (MRF) block.
+    """A single layer of the Multi-Receptive Field (MRF) block.
 
     This layer consists of two 1D convolutional layers with weight normalization
     and Leaky ReLU activation in between. The first convolution has a dilation,
@@ -23,6 +21,7 @@ class MRFLayer(torch.nn.Module):
         channels (int): The number of input and output channels.
         kernel_size (int): The kernel size of the convolutional layers.
         dilation (int): The dilation rate for the first convolutional layer.
+
     """
 
     def __init__(self, channels, kernel_size, dilation):
@@ -34,7 +33,7 @@ class MRFLayer(torch.nn.Module):
                 kernel_size,
                 padding=(kernel_size * dilation - dilation) // 2,
                 dilation=dilation,
-            )
+            ),
         )
         self.conv2 = weight_norm(torch.nn.Conv1d(channels, channels, kernel_size, padding=kernel_size // 2, dilation=1))
 
@@ -51,8 +50,7 @@ class MRFLayer(torch.nn.Module):
 
 
 class MRFBlock(torch.nn.Module):
-    """
-    A Multi-Receptive Field (MRF) block.
+    """A Multi-Receptive Field (MRF) block.
 
     This block consists of multiple MRFLayers with different dilation rates.
     It applies each layer sequentially to the input.
@@ -61,6 +59,7 @@ class MRFBlock(torch.nn.Module):
         channels (int): The number of input and output channels for the MRFLayers.
         kernel_size (int): The kernel size for the convolutional layers in the MRFLayers.
         dilations (list[int]): A list of dilation rates for the MRFLayers.
+
     """
 
     def __init__(self, channels, kernel_size, dilations):
@@ -80,8 +79,7 @@ class MRFBlock(torch.nn.Module):
 
 
 class SineGenerator(torch.nn.Module):
-    """
-    Definition of sine generator
+    """Definition of sine generator
 
     Generates sine waveforms with optional harmonics and additive noise.
     Can be used to create harmonic noise source for neural vocoders.
@@ -92,6 +90,7 @@ class SineGenerator(torch.nn.Module):
         sine_amp (float): Amplitude of sine-waveform (default 0.1).
         noise_std (float): Standard deviation of Gaussian noise (default 0.003).
         voiced_threshold (float): F0 threshold for voiced/unvoiced classification (default 0).
+
     """
 
     def __init__(
@@ -111,11 +110,11 @@ class SineGenerator(torch.nn.Module):
         self.voiced_threshold = voiced_threshold
 
     def _f02uv(self, f0: torch.Tensor):
-        """
-        Generates voiced/unvoiced (UV) signal based on the fundamental frequency (F0).
+        """Generates voiced/unvoiced (UV) signal based on the fundamental frequency (F0).
 
         Args:
             f0 (torch.Tensor): Fundamental frequency tensor of shape (batch_size, length, 1).
+
         """
         # generate uv signal
         uv = torch.ones_like(f0)
@@ -123,13 +122,13 @@ class SineGenerator(torch.nn.Module):
         return uv
 
     def _f02sine(self, f0_values: torch.Tensor):
-        """
-        Generates sine waveforms based on the fundamental frequency (F0) and its harmonics.
+        """Generates sine waveforms based on the fundamental frequency (F0) and its harmonics.
 
         Args:
             f0_values (torch.Tensor): Tensor of fundamental frequency and its harmonics,
                                       shape (batch_size, length, dim), where dim indicates
                                       the fundamental tone and overtones.
+
         """
         # convert to F0 in rad. The integer part n can be ignored
         # because 2 * np.pi * n doesn't affect phase
@@ -170,8 +169,7 @@ class SineGenerator(torch.nn.Module):
 
 
 class SourceModuleHnNSF(torch.nn.Module):
-    """
-    Generates harmonic and noise source features.
+    """Generates harmonic and noise source features.
 
     This module uses the SineGenerator to create harmonic signals based on the
     fundamental frequency (F0) and merges them into a single excitation signal.
@@ -182,6 +180,7 @@ class SourceModuleHnNSF(torch.nn.Module):
         sine_amp (float, optional): Amplitude of sine source signal. Defaults to 0.1.
         add_noise_std (float, optional): Standard deviation of additive Gaussian noise. Defaults to 0.003.
         voiced_threshod (float, optional): Threshold to set voiced/unvoiced given F0. Defaults to 0.
+
     """
 
     def __init__(
@@ -213,8 +212,7 @@ class SourceModuleHnNSF(torch.nn.Module):
 
 
 class HiFiGANMRFGenerator(torch.nn.Module):
-    """
-    HiFi-GAN generator with Multi-Receptive Field (MRF) blocks.
+    """HiFi-GAN generator with Multi-Receptive Field (MRF) blocks.
 
     This generator takes an input feature sequence and fundamental frequency (F0)
     as input and generates an audio waveform. It utilizes transposed convolutions
@@ -232,6 +230,7 @@ class HiFiGANMRFGenerator(torch.nn.Module):
         sample_rate (int): Sampling rate of the audio.
         harmonic_num (int): Number of harmonics to generate.
         checkpointing (bool): Whether to use checkpointing to save memory during training (default: False).
+
     """
 
     def __init__(
@@ -260,7 +259,7 @@ class HiFiGANMRFGenerator(torch.nn.Module):
 
         stride_f0s = [math.prod(upsample_rates[i + 1 :]) if i + 1 < len(upsample_rates) else 1 for i in range(len(upsample_rates))]
 
-        for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
+        for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes, strict=False)):
             # handling odd upsampling rates
             if u % 2 == 0:
                 # old method
@@ -277,8 +276,8 @@ class HiFiGANMRFGenerator(torch.nn.Module):
                         stride=u,
                         padding=padding,
                         output_padding=u % 2,
-                    )
-                )
+                    ),
+                ),
             )
 
             stride = stride_f0s[i]
@@ -292,21 +291,24 @@ class HiFiGANMRFGenerator(torch.nn.Module):
                     kernel_size=kernel,
                     stride=stride,
                     padding=padding,
-                )
+                ),
             )
         self.mrfs = torch.nn.ModuleList()
         for i in range(len(self.upsamples)):
             channel = upsample_initial_channel // (2 ** (i + 1))
             self.mrfs.append(
                 torch.nn.ModuleList(
-                    [MRFBlock(channel, kernel_size=k, dilations=d) for k, d in zip(resblock_kernel_sizes, resblock_dilations)]
-                )
+                    [
+                        MRFBlock(channel, kernel_size=k, dilations=d)
+                        for k, d in zip(resblock_kernel_sizes, resblock_dilations, strict=False)
+                    ],
+                ),
             )
         self.conv_post = weight_norm(torch.nn.Conv1d(channel, 1, kernel_size=7, stride=1, padding=3))
         if gin_channels != 0:
             self.cond = torch.nn.Conv1d(gin_channels, upsample_initial_channel, 1)
 
-    def forward(self, x: torch.Tensor, f0: torch.Tensor, g: Optional[torch.Tensor] = None):
+    def forward(self, x: torch.Tensor, f0: torch.Tensor, g: torch.Tensor | None = None):
         f0 = self.f0_upsample(f0[:, None, :]).transpose(-1, -2)
         har_source, _, _ = self.m_source(f0)
         har_source = har_source.transpose(-1, -2)
@@ -315,7 +317,7 @@ class HiFiGANMRFGenerator(torch.nn.Module):
         if g is not None:
             x = x + self.cond(g)
 
-        for ups, mrf, noise_conv in zip(self.upsamples, self.mrfs, self.noise_convs):
+        for ups, mrf, noise_conv in zip(self.upsamples, self.mrfs, self.noise_convs, strict=False):
             x = torch.nn.functional.leaky_relu(x, LRELU_SLOPE)
 
             if self.training and self.checkpointing:

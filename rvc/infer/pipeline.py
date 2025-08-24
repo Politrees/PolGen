@@ -38,9 +38,7 @@ class AudioProcessor:
 # Класс для преобразования голоса
 class VC:
     def __init__(self, tgt_sr, config):
-        """
-        Инициализация параметров для преобразования голоса.
-        """
+        """Инициализация параметров для преобразования голоса."""
         self.x_pad = config.x_pad
         self.x_query = config.x_query
         self.x_center = config.x_center
@@ -70,28 +68,22 @@ class VC:
         autotune,
         autotune_strength,
     ):
-        """
-        Получает F0 с использованием выбранного метода.
-        """
+        """Получает F0 с использованием выбранного метода."""
         f0 = None
         f0_mel_min = 1127 * np.log(1 + f0_min / 700)
         f0_mel_max = 1127 * np.log(1 + f0_max / 700)
 
-        if f0_method == "crepe":
+        if f0_method in ("crepe", "crepe-tiny"):
             model = CREPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
-            f0 = model.get_f0(audio, f0_min, f0_max, p_len, "full")
-            del model
-        elif f0_method == "crepe-tiny":
-            model = CREPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
-            f0 = model.get_f0(audio, f0_min, f0_max, p_len, "tiny")
-            del model
-        elif f0_method == "fcpe":
-            model = FCPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
-            f0 = model.get_f0(audio, p_len)
+            f0 = model.get_f0(audio, f0_min, f0_max, p_len, ("full" if f0_method == "crepe" else "tiny"))
             del model
         elif f0_method in ("rmvpe", "rmvpe+"):
             model = RMVPE(device=self.device, sample_rate=self.sample_rate)
             f0 = model.get_f0(audio, f0_method)
+            del model
+        elif f0_method == "fcpe":
+            model = FCPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
+            f0 = model.get_f0(audio, p_len)
             del model
 
         if f0 is None:
@@ -128,9 +120,7 @@ class VC:
         version,
         protect,
     ):
-        """
-        Преобразует аудио с использованием модели.
-        """
+        """Преобразует аудио с использованием модели."""
         feats = torch.from_numpy(audio0).float()
         if feats.dim() == 2:
             feats = feats.mean(-1)
@@ -213,9 +203,7 @@ class VC:
         autotune,
         autotune_strength,
     ):
-        """
-        Основной конвейер для преобразования аудио.
-        """
+        """Основной конвейер для преобразования аудио."""
         index = big_npy = None
         if file_index and os.path.exists(file_index) and index_rate != 0:
             try:
@@ -289,7 +277,7 @@ class VC:
                     index_rate,
                     version,
                     protect,
-                )[self.t_pad_tgt : -self.t_pad_tgt]
+                )[self.t_pad_tgt : -self.t_pad_tgt],
             )
             s = t
 
@@ -309,7 +297,7 @@ class VC:
                 index_rate,
                 version,
                 protect,
-            )[self.t_pad_tgt : -self.t_pad_tgt]
+            )[self.t_pad_tgt : -self.t_pad_tgt],
         )
 
         audio_opt = np.concatenate(audio_opt)

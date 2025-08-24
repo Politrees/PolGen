@@ -1,5 +1,4 @@
 import math
-from typing import Optional
 
 import torch
 from torch.nn.utils import remove_weight_norm
@@ -12,8 +11,7 @@ from rvc.lib.algorithm.residuals import LRELU_SLOPE, ResBlock
 
 
 class SourceModuleHnNSF(torch.nn.Module):
-    """
-    Source Module for generating harmonic and noise components for audio synthesis.
+    """Source Module for generating harmonic and noise components for audio synthesis.
 
     This module generates a harmonic source signal using sine waves and adds
     optional noise. It's often used in neural vocoders as a source of excitation.
@@ -24,6 +22,7 @@ class SourceModuleHnNSF(torch.nn.Module):
         sine_amp (float, optional): Amplitude of the sine wave components. Defaults to 0.1.
         add_noise_std (float, optional): Standard deviation of the additive white Gaussian noise. Defaults to 0.003.
         voiced_threshod (float, optional): Threshold for the fundamental frequency (F0) to determine if a frame is voiced. If F0 is below this threshold, it's considered unvoiced. Defaults to 0.
+
     """
 
     def __init__(
@@ -51,8 +50,7 @@ class SourceModuleHnNSF(torch.nn.Module):
 
 
 class HiFiGANNSFGenerator(torch.nn.Module):
-    """
-    Generator module based on the Neural Source Filter (NSF) architecture.
+    """Generator module based on the Neural Source Filter (NSF) architecture.
 
     This generator synthesizes audio by first generating a source excitation signal
     (harmonic and noise) and then filtering it through a series of upsampling and
@@ -68,6 +66,7 @@ class HiFiGANNSFGenerator(torch.nn.Module):
         gin_channels (int): Number of input channels for the global conditioning. If 0, no global conditioning is used.
         sr (int): Sampling rate of the audio.
         checkpointing (bool, optional): Whether to use gradient checkpointing to save memory during training. Defaults to False.
+
     """
 
     def __init__(
@@ -98,7 +97,7 @@ class HiFiGANNSFGenerator(torch.nn.Module):
         channels = [upsample_initial_channel // (2 ** (i + 1)) for i in range(len(upsample_rates))]
         stride_f0s = [math.prod(upsample_rates[i + 1 :]) if i + 1 < len(upsample_rates) else 1 for i in range(len(upsample_rates))]
 
-        for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
+        for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes, strict=False)):
             # handling odd upsampling rates
             if u % 2 == 0:
                 # old method
@@ -115,8 +114,8 @@ class HiFiGANNSFGenerator(torch.nn.Module):
                         u,
                         padding=padding,
                         output_padding=u % 2,
-                    )
-                )
+                    ),
+                ),
             )
 
             stride = stride_f0s[i]
@@ -130,11 +129,15 @@ class HiFiGANNSFGenerator(torch.nn.Module):
                     kernel_size=kernel,
                     stride=stride,
                     padding=padding,
-                )
+                ),
             )
 
         self.resblocks = torch.nn.ModuleList(
-            [ResBlock(channels[i], k, d) for i in range(len(self.ups)) for k, d in zip(resblock_kernel_sizes, resblock_dilation_sizes)]
+            [
+                ResBlock(channels[i], k, d)
+                for i in range(len(self.ups))
+                for k, d in zip(resblock_kernel_sizes, resblock_dilation_sizes, strict=False)
+            ],
         )
 
         self.conv_post = torch.nn.Conv1d(channels[-1], 1, 7, 1, padding=3, bias=False)
@@ -146,7 +149,7 @@ class HiFiGANNSFGenerator(torch.nn.Module):
         self.upp = math.prod(upsample_rates)
         self.lrelu_slope = LRELU_SLOPE
 
-    def forward(self, x: torch.Tensor, f0: torch.Tensor, g: Optional[torch.Tensor] = None):
+    def forward(self, x: torch.Tensor, f0: torch.Tensor, g: torch.Tensor | None = None):
         har_source, _, _ = self.m_source(f0, self.upp)
         har_source = har_source.transpose(1, 2)
         # new tensor
@@ -155,7 +158,7 @@ class HiFiGANNSFGenerator(torch.nn.Module):
         if g is not None:
             x = x + self.cond(g)
 
-        for i, (ups, noise_convs) in enumerate(zip(self.ups, self.noise_convs)):
+        for i, (ups, noise_convs) in enumerate(zip(self.ups, self.noise_convs, strict=False)):
             x = torch.nn.functional.leaky_relu(x, self.lrelu_slope)
             # Apply upsampling layer
             if self.training and self.checkpointing:

@@ -6,8 +6,7 @@ from rvc.lib.algorithm.commons import convert_pad_shape
 
 
 class MultiHeadAttention(torch.nn.Module):
-    """
-    Multi-head attention module with optional relative positional encoding and proximal bias.
+    """Multi-head attention module with optional relative positional encoding and proximal bias.
 
     Args:
         channels (int): Number of input channels.
@@ -19,6 +18,7 @@ class MultiHeadAttention(torch.nn.Module):
         block_length (int, optional): Block length for local attention. Defaults to None.
         proximal_bias (bool, optional): Whether to use proximal bias in self-attention. Defaults to False.
         proximal_init (bool, optional): Whether to initialize the key projection weights the same as query projection weights. Defaults to False.
+
     """
 
     def __init__(
@@ -164,8 +164,7 @@ class MultiHeadAttention(torch.nn.Module):
 
 
 class FFN(torch.nn.Module):
-    """
-    Feed-forward network module.
+    """Feed-forward network module.
 
     Args:
         in_channels (int): Number of input channels.
@@ -175,6 +174,7 @@ class FFN(torch.nn.Module):
         p_dropout (float, optional): Dropout probability. Defaults to 0.0.
         activation (str, optional): Activation function to use. Defaults to None.
         causal (bool, optional): Whether to use causal padding in the convolution layers. Defaults to False.
+
     """
 
     def __init__(
