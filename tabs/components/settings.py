@@ -77,7 +77,25 @@ def settings():
                                         autotune_tonic = gr.Dropdown(
                                             value="C",
                                             label="Тоника",
-                                            choices=["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"],
+                                            choices=[
+                                                "C",
+                                                "C#",
+                                                "Db",
+                                                "D",
+                                                "D#",
+                                                "Eb",
+                                                "E",
+                                                "F",
+                                                "F#",
+                                                "Gb",
+                                                "G",
+                                                "G#",
+                                                "Ab",
+                                                "A",
+                                                "A#",
+                                                "Bb",
+                                                "B",
+                                            ],
                                             interactive=True,
                                             visible=False,
                                         )
@@ -119,4 +137,17 @@ def settings():
                                 visible=True,
                             )
 
-    return f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_tonic, autotune_scale, autotune_strength, f0_min, f0_max
+    return (
+        f0_method,
+        index_rate,
+        volume_envelope,
+        protect,
+        stereo_sound,
+        audio_upscaling,
+        autotune,
+        autotune_tonic,
+        autotune_scale,
+        autotune_strength,
+        f0_min,
+        f0_max,
+    )
