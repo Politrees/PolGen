@@ -115,7 +115,20 @@ def inference_tab():
                 )
 
     # Компонент настроек
-    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_tonic, autotune_scale, autotune_strength, f0_min, f0_max = settings()
+    (
+        f0_method,
+        index_rate,
+        volume_envelope,
+        protect,
+        stereo_sound,
+        audio_upscaling,
+        autotune,
+        autotune_tonic,
+        autotune_scale,
+        autotune_strength,
+        f0_min,
+        f0_max,
+    ) = settings()
 
     # Загрузка файлов
     local_file.input(process_file_upload, inputs=[local_file], outputs=[song_input, local_file])
@@ -289,7 +302,20 @@ def edge_tts_tab():
                 )
 
     # Компонент настроек
-    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_tonic, autotune_scale, autotune_strength, f0_min, f0_max = settings()
+    (
+        f0_method,
+        index_rate,
+        volume_envelope,
+        protect,
+        stereo_sound,
+        audio_upscaling,
+        autotune,
+        autotune_tonic,
+        autotune_scale,
+        autotune_strength,
+        f0_min,
+        f0_max,
+    ) = settings()
 
     # Обновление списка TTS-голосов
     language.change(update_edge_voices, inputs=language, outputs=tts_voice)

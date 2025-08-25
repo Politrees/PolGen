@@ -18,18 +18,16 @@ def calc_pitch_shift(f0, target_f0=155.0, limit_f0=12):
 
 
 class AutoTune:
-    """
-    Класс для выполнения автотюна на аудиосигнале.
-    """
+    """Класс для выполнения автотюна на аудиосигнале."""
 
     def __init__(self, a4_frequency: float = 440.0, scale_name: str = "chromatic", tonic_note: str = "C"):
-        """
-        Инициализирует класс AutoTune с заданными параметрами.
+        """Инициализирует класс AutoTune с заданными параметрами.
 
         Args:
             a4_frequency (float): Частота ноты A4 (Ля первой октавы).
             scale_name (str): Название гаммы.
             tonic_note (str): Тоника (основная нота) гаммы.
+
         """
         self.a4_frequency = a4_frequency
 
@@ -43,7 +41,25 @@ class AutoTune:
         }
 
         # Соответствие названий тоник их полутоновым значениям (относительно C)
-        tonic_semitones = {"C": 0, "C#": 1, "Db": 1, "D": 2, "D#": 3, "Eb": 3, "E": 4, "F": 5, "F#": 6, "Gb": 6, "G": 7, "G#": 8, "Ab": 8, "A": 9, "A#": 10, "Bb": 10, "B": 11}
+        tonic_semitones = {
+            "C": 0,
+            "C#": 1,
+            "Db": 1,
+            "D": 2,
+            "D#": 3,
+            "Eb": 3,
+            "E": 4,
+            "F": 5,
+            "F#": 6,
+            "Gb": 6,
+            "G": 7,
+            "G#": 8,
+            "Ab": 8,
+            "A": 9,
+            "A#": 10,
+            "Bb": 10,
+            "B": 11,
+        }
 
         if scale_name not in scale_intervals:
             raise ValueError(f"Неизвестная гамма: '{scale_name}'. Доступные гаммы: {list(scale_intervals.keys())}")
@@ -66,8 +82,7 @@ class AutoTune:
         self.target_frequencies = np.array(target_frequencies)
 
     def apply_autotune(self, input_f0: np.ndarray, autotune_strength: float) -> np.ndarray:
-        """
-        Применяет автотюн к массиву основной частоты (F0) аудиосигнала.
+        """Применяет автотюн к массиву основной частоты (F0) аудиосигнала.
 
         Args:
             input_f0 (np.ndarray): Входной массив основной частоты.
@@ -76,6 +91,7 @@ class AutoTune:
 
         Returns:
             np.ndarray: Массив основной частоты после применения автотюна.
+
         """
         # Если нет целевых частот или сила автотюна равна 0, возвращаем исходный массив
         if not self.target_frequencies.any() or autotune_strength == 0:
@@ -101,7 +117,9 @@ class AutoTune:
         upper_note_freq = self.target_frequencies[insertion_indices]
 
         # Определяем, какая из двух нот ближе к текущей частоте
-        closest_target_frequencies = np.where(np.abs(voiced_f0 - lower_note_freq) < np.abs(voiced_f0 - upper_note_freq), lower_note_freq, upper_note_freq)
+        closest_target_frequencies = np.where(
+            np.abs(voiced_f0 - lower_note_freq) < np.abs(voiced_f0 - upper_note_freq), lower_note_freq, upper_note_freq
+        )
 
         # Применяем коррекцию: сдвигаем частоту в сторону ближайшей ноты с заданной силой
         output_f0[is_voiced] = voiced_f0 + (closest_target_frequencies - voiced_f0) * autotune_strength
