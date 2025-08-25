@@ -35,8 +35,7 @@ def inference_tab():
             with gr.Group():
                 autopitch = gr.Checkbox(
                     value=False,
-                    label="АвтоТон",
-                    info="Автоматическое определение высоты тона",
+                    label="Автоматическое определение высоты тона",
                     interactive=True,
                     visible=True,
                 )
@@ -198,8 +197,7 @@ def edge_tts_tab():
                 with gr.Group():
                     autopitch = gr.Checkbox(
                         value=False,
-                        label="АвтоТон",
-                        info="Автоматическое определение высоты тона",
+                        label="Автоматическое определение высоты тона",
                         interactive=True,
                         visible=True,
                     )
