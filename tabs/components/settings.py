@@ -93,7 +93,7 @@ def settings():
                                         maximum=1,
                                         step=0.1,
                                         value=1,
-                                        label="Сила коррекции высоты тона",
+                                        label="Сила коррекции",
                                         interactive=True,
                                         visible=False,
                                     )
