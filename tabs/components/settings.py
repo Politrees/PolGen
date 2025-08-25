@@ -101,8 +101,21 @@ def settings():
                                         )
                                         autotune_scale = gr.Dropdown(
                                             value="chromatic",
-                                            label="Гамма",
-                                            choices=["chromatic", "major", "minor", "pentatonic_major", "pentatonic_minor"],
+                                            label="Гамма/Лад",
+                                            choices=[
+                                                "chromatic",
+                                                "major",
+                                                "minor",
+                                                "dorian",
+                                                "phrygian",
+                                                "lydian",
+                                                "mixolydian",
+                                                "harmonic_minor",
+                                                "melodic_minor",
+                                                "pentatonic_major",
+                                                "pentatonic_minor",
+                                                "blues",
+                                            ],
                                             interactive=True,
                                             visible=False,
                                         )
