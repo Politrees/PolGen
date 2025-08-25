@@ -37,8 +37,7 @@ class AutoTune:
             scale_semitones = scale  # Пользовательский набор полутонов
 
         note_freqs = []
-        # Генерируем ноты в диапазоне от C1 (MIDI 24) до C8 (MIDI 108)
-        for midi_note in range(24, 109):
+        for midi_note in range(24, 109):  # Диапазон C1-C8
             if (midi_note % 12) in scale_semitones:
                 freq = self.a4_pitch * (2 ** ((midi_note - 69) / 12))
                 note_freqs.append(freq)
@@ -57,8 +56,10 @@ class AutoTune:
         f0_voiced = f0[voiced_mask]
 
         # Находим ближайшие разрешенные ноты для каждой вокализованной частоты
-        diff = np.abs(f0_voiced[:, None] - self.note_array[None, :])
-        closest_notes = self.note_array[np.argmin(diff, axis=1)]
+        insertion_indices = np.clip(np.searchsorted(self.note_array, f0_voiced), 1, len(self.note_array) - 1)
+        note_below = self.note_array[insertion_indices - 1]
+        note_above = self.note_array[insertion_indices]
+        closest_notes = np.where(np.abs(f0_voiced - note_below) < np.abs(f0_voiced - note_above), note_below, note_above)
 
         # Применяем коррекцию только к вокализованным участкам
         autotuned_f0[voiced_mask] = f0_voiced + (closest_notes - f0_voiced) * f0_autotune_strength
