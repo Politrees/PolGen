@@ -18,52 +18,94 @@ def calc_pitch_shift(f0, target_f0=155.0, limit_f0=12):
 
 
 class AutoTune:
-    def __init__(self, a4_pitch: float = 440.0, scale: str = "chromatic"):
-        self.a4_pitch = a4_pitch
+    """
+    Класс для выполнения автотюна на аудиосигнале.
+    """
 
-        scales = {
-            "chromatic": list(range(12)),  # Все 12 нот
-            "major": [0, 2, 4, 5, 7, 9, 11],
-            "minor": [0, 2, 3, 5, 7, 8, 10],
-            "pentatonic_major": [0, 2, 4, 7, 9],
-            "pentatonic_minor": [0, 3, 5, 7, 10],
+    def __init__(self, a4_frequency: float = 440.0, scale_name: str = "chromatic", tonic_note: str = "C"):
+        """
+        Инициализирует класс AutoTune с заданными параметрами.
+
+        Args:
+            a4_frequency (float): Частота ноты A4 (Ля первой октавы).
+            scale_name (str): Название гаммы.
+            tonic_note (str): Тоника (основная нота) гаммы.
+        """
+        self.a4_frequency = a4_frequency
+
+        # Интервалы гамм в полутонах от тоники
+        scale_intervals = {
+            "chromatic": list(range(12)),  # Все 12 нот (полутонов)
+            "major": [0, 2, 4, 5, 7, 9, 11],  # Мажорная гамма
+            "minor": [0, 2, 3, 5, 7, 8, 10],  # Минорная гамма
+            "pentatonic_major": [0, 2, 4, 7, 9],  # Мажорная пентатоника
+            "pentatonic_minor": [0, 3, 5, 7, 10],  # Минорная пентатоника
         }
 
-        if isinstance(scale, str):
-            if scale not in scales:
-                raise ValueError(f"Неизвестный масштаб: {scale}. Доступные масштабы: {list(scales.keys())}")
-            scale_semitones = scales[scale]
-        else:
-            scale_semitones = scale  # Пользовательский набор полутонов
+        # Соответствие названий тоник их полутоновым значениям (относительно C)
+        tonic_semitones = {"C": 0, "C#": 1, "Db": 1, "D": 2, "D#": 3, "Eb": 3, "E": 4, "F": 5, "F#": 6, "Gb": 6, "G": 7, "G#": 8, "Ab": 8, "A": 9, "A#": 10, "Bb": 10, "B": 11}
 
-        note_freqs = []
-        for midi_note in range(24, 109):  # Диапазон C1-C8
-            if (midi_note % 12) in scale_semitones:
-                freq = self.a4_pitch * (2 ** ((midi_note - 69) / 12))
-                note_freqs.append(freq)
+        if scale_name not in scale_intervals:
+            raise ValueError(f"Неизвестная гамма: '{scale_name}'. Доступные гаммы: {list(scale_intervals.keys())}")
+        if tonic_note not in tonic_semitones:
+            raise ValueError(f"Неизвестная тоника: '{tonic_note}'. Доступные тоники: {list(tonic_semitones.keys())}")
 
-        self.note_array = np.array(note_freqs)
+        selected_scale_intervals = scale_intervals[scale_name]
+        selected_tonic_semitone = tonic_semitones[tonic_note]
 
-    def autotune_f0(self, f0: np.ndarray, f0_autotune_strength: float) -> np.ndarray:
-        if not self.note_array.any() or f0_autotune_strength == 0:
-            return f0  # Если нет нот для настройки или сила равна нулю, ничего не делаем
+        # Расчёт целевых частот для выбранной гаммы
+        target_frequencies = []
+        for midi_note in range(24, 109):  # Диапазон C1-C8 (MIDI-ноты 24-108)
+            # Проверяем, принадлежит ли MIDI-нота выбранной гамме
+            if (midi_note - selected_tonic_semitone) % 12 in selected_scale_intervals:
+                # Конвертируем MIDI-ноту в частоту (Гц)
+                frequency = self.a4_frequency * (2 ** ((midi_note - 69) / 12))
+                target_frequencies.append(frequency)
 
-        autotuned_f0 = f0.copy()
-        voiced_mask = f0 > 0
-        if not np.any(voiced_mask):
-            return f0  # Если нет вокализованных участков
+        # Сохраняем массив целевых частот для быстрого поиска
+        self.target_frequencies = np.array(target_frequencies)
 
-        f0_voiced = f0[voiced_mask]
+    def apply_autotune(self, input_f0: np.ndarray, autotune_strength: float) -> np.ndarray:
+        """
+        Применяет автотюн к массиву основной частоты (F0) аудиосигнала.
 
-        # Находим ближайшие разрешенные ноты для каждой вокализованной частоты
-        insertion_indices = np.clip(np.searchsorted(self.note_array, f0_voiced), 1, len(self.note_array) - 1)
-        note_below = self.note_array[insertion_indices - 1]
-        note_above = self.note_array[insertion_indices]
-        closest_notes = np.where(np.abs(f0_voiced - note_below) < np.abs(f0_voiced - note_above), note_below, note_above)
+        Args:
+            input_f0 (np.ndarray): Входной массив основной частоты.
+            autotune_strength (float): Сила автотюна (от 0.0 до 1.0).
+                                    0.0 - нет коррекции, 1.0 - полная коррекция.
 
-        # Применяем коррекцию только к вокализованным участкам
-        autotuned_f0[voiced_mask] = f0_voiced + (closest_notes - f0_voiced) * f0_autotune_strength
-        return autotuned_f0
+        Returns:
+            np.ndarray: Массив основной частоты после применения автотюна.
+        """
+        # Если нет целевых частот или сила автотюна равна 0, возвращаем исходный массив
+        if not self.target_frequencies.any() or autotune_strength == 0:
+            return input_f0
+
+        # Создаём копию входного массива для обработки
+        output_f0 = input_f0.copy()
+        # Определяем "вокализованные" участки (где F0 > 0)
+        is_voiced = input_f0 > 0
+
+        # Если вокализованных участков нет, возвращаем исходный массив
+        if not np.any(is_voiced):
+            return input_f0
+
+        # Выбираем только те частоты, которые нужно обработать
+        voiced_f0 = input_f0[is_voiced]
+
+        # Находим индексы ближайших разрешённых нот в массиве target_frequencies
+        insertion_indices = np.clip(np.searchsorted(self.target_frequencies, voiced_f0), 1, len(self.target_frequencies) - 1)
+
+        # Получаем частоты ближайших нот "снизу" и "сверху"
+        lower_note_freq = self.target_frequencies[insertion_indices - 1]
+        upper_note_freq = self.target_frequencies[insertion_indices]
+
+        # Определяем, какая из двух нот ближе к текущей частоте
+        closest_target_frequencies = np.where(np.abs(voiced_f0 - lower_note_freq) < np.abs(voiced_f0 - upper_note_freq), lower_note_freq, upper_note_freq)
+
+        # Применяем коррекцию: сдвигаем частоту в сторону ближайшей ноты с заданной силой
+        output_f0[is_voiced] = voiced_f0 + (closest_target_frequencies - voiced_f0) * autotune_strength
+        return output_f0
 
 
 class RMVPE:

@@ -65,6 +65,7 @@ class VC:
         autopitch,
         autopitch_threshold,
         autotune,
+        autotune_tonic,
         autotune_scale,
         autotune_strength,
     ):
@@ -95,7 +96,7 @@ class VC:
 
         # АвтоТюн (коррекция высоты тона)
         if autotune is True:
-            AT = AutoTune(scale=autotune_scale)
+            AT = AutoTune(scale_name=autotune_scale, tonic_note=autotune_tonic)
             f0 = AT.autotune_f0(f0, autotune_strength)
 
         f0 = np.multiply(f0, pow(2, pitch / 12))
@@ -202,6 +203,7 @@ class VC:
         autopitch,
         autopitch_threshold,
         autotune,
+        autotune_tonic,
         autotune_scale,
         autotune_strength,
     ):
@@ -248,6 +250,7 @@ class VC:
                 autopitch,
                 autopitch_threshold,
                 autotune,
+                autotune_tonic,
                 autotune_scale,
                 autotune_strength,
             )

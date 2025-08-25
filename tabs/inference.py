@@ -6,6 +6,7 @@ from tabs.components.modules import (
     edge_voices,
     get_folders,
     process_file_upload,
+    show_autotune,
     swap_buttons,
     swap_visibility,
     update_edge_voices,
@@ -114,7 +115,7 @@ def inference_tab():
                 )
 
     # Компонент настроек
-    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_scale, autotune_strength, f0_min, f0_max = settings()
+    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_tonic, autotune_scale, autotune_strength, f0_min, f0_max = settings()
 
     # Загрузка файлов
     local_file.input(process_file_upload, inputs=[local_file], outputs=[song_input, local_file])
@@ -127,6 +128,9 @@ def inference_tab():
 
     # Обновление метода регулировки высоты тона
     autopitch.change(update_visible, inputs=autopitch, outputs=[autopitch_threshold, rvc_pitch])
+
+    # Показать параметры автотюна
+    autotune.change(show_autotune, inputs=autotune, outputs=[autotune_tonic, autotune_scale, autotune_strength])
 
     # Обновление списка моделей
     ref_btn.click(update_models_list, None, outputs=rvc_model)
@@ -147,6 +151,8 @@ def inference_tab():
             autopitch,
             autopitch_threshold,
             autotune,
+            autotune_tonic,
+            autotune_scale,
             autotune_strength,
             audio_upscaling,
             stereo_sound,
@@ -283,13 +289,16 @@ def edge_tts_tab():
                 )
 
     # Компонент настроек
-    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_scale, autotune_strength, f0_min, f0_max = settings()
+    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_tonic, autotune_scale, autotune_strength, f0_min, f0_max = settings()
 
     # Обновление списка TTS-голосов
     language.change(update_edge_voices, inputs=language, outputs=tts_voice)
 
     # Обновление метода регулировки высоты тона
     autopitch.change(update_visible, inputs=autopitch, outputs=[autopitch_threshold, rvc_pitch])
+
+    # Показать параметры автотюна
+    autotune.change(show_autotune, inputs=autotune, outputs=[autotune_tonic, autotune_scale, autotune_strength])
 
     # Обновление списка моделей
     ref_btn.click(update_models_list, None, outputs=rvc_model)
@@ -309,6 +318,8 @@ def edge_tts_tab():
             autopitch,
             autopitch_threshold,
             autotune,
+            autotune_tonic,
+            autotune_scale,
             autotune_strength,
             stereo_sound,
             output_format,
