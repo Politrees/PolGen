@@ -50,18 +50,45 @@ def settings():
                 with gr.Group():
                     with gr.Column():
                         with gr.Row(variant="panel"):
-                            stereo_sound = gr.Checkbox(
-                                value=False,
-                                label="Преобразовать моно звук в стерео",
-                                interactive=True,
-                                visible=True,
-                            )
-                            audio_upscaling = gr.Checkbox(
-                                label="Улучшить качество аудио (долгая обработка)",
-                                value=False,
-                                interactive=True,
-                                visible=True,
-                            )
+                            with gr.Column():
+                                stereo_sound = gr.Checkbox(
+                                    value=False,
+                                    label="Преобразовать в стерео",
+                                    info="Преобразование моно звука в стерео",
+                                    interactive=True,
+                                    visible=True,
+                                )
+                                audio_upscaling = gr.Checkbox(
+                                    value=False,
+                                    label="Аудио-апскейл",
+                                    info="Улучшение качества аудио (долгая обработка)",
+                                    interactive=True,
+                                    visible=True,
+                                )
+                            with gr.Column():
+                                autotune = gr.Checkbox(
+                                    value=False,
+                                    label="АвтоТюн",
+                                    info="Коррекция высоты тона",
+                                    interactive=True,
+                                    visible=True,
+                                )
+                                autotune_scale = gr.Dropdown(
+                                    value="chromatic",
+                                    label="Музыкальная гамма",
+                                    choices=["chromatic", "major", "minor", "pentatonic_major", "pentatonic_minor"],
+                                    interactive=True,
+                                    visible=True,
+                                )
+                                autotune_strength = gr.Slider(
+                                    minimum=0,
+                                    maximum=1,
+                                    step=0.1,
+                                    value=1,
+                                    label="Сила коррекции автотюна",
+                                    interactive=True,
+                                    visible=False,
+                                )
                         with gr.Row(variant="panel"):
                             f0_min = gr.Slider(
                                 minimum=1,
@@ -84,4 +111,4 @@ def settings():
                                 visible=True,
                             )
 
-    return f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, f0_min, f0_max
+    return f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_scale, autotune_strength, f0_min, f0_max

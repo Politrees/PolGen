@@ -126,6 +126,7 @@ def rvc_infer(
     autopitch=False,
     autopitch_threshold=155.0,
     autotune=False,
+    autotune_scale="chromatic",
     autotune_strength=1.0,
     audio_upscaling=False,  # FlashSR
     stereo_sound=False,
@@ -179,6 +180,7 @@ def rvc_infer(
         autopitch,
         autopitch_threshold,
         autotune,
+        autotune_scale,
         autotune_strength,
     )
     # Сохраняем файл и конвертируем его в выбранный формат
@@ -215,6 +217,7 @@ def rvc_edgetts_infer(
     autopitch=False,
     autopitch_threshold=155.0,
     autotune=False,
+    autotune_scale="chromatic",
     autotune_strength=1.0,
     stereo_sound=False,
     output_format="wav",
@@ -250,6 +253,7 @@ def rvc_edgetts_infer(
         autopitch=autopitch,
         autopitch_threshold=autopitch_threshold,
         autotune=autotune,
+        autotune_scale=autotune_scale,
         autotune_strength=autotune_strength,
         audio_upscaling=audio_upscaling,
         stereo_sound=stereo_sound,

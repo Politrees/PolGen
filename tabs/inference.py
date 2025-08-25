@@ -6,7 +6,6 @@ from tabs.components.modules import (
     edge_voices,
     get_folders,
     process_file_upload,
-    show_autotune,
     swap_buttons,
     swap_visibility,
     update_edge_voices,
@@ -33,19 +32,12 @@ def inference_tab():
                     visible=True,
                 )
             with gr.Group():
-                with gr.Row():
-                    autopitch = gr.Checkbox(
-                        value=False,
-                        label="Автоматическое определение высоты тона",
-                        interactive=True,
-                        visible=True,
-                    )
-                    autotune = gr.Checkbox(
-                        value=False,
-                        label="Коррекция высоты тона (АвтоТюн)",
-                        interactive=True,
-                        visible=True,
-                    )
+                autopitch = gr.Checkbox(
+                    value=False,
+                    label="Автоматическое определение высоты тона",
+                    interactive=True,
+                    visible=True,
+                )
                 autopitch_threshold = gr.Radio(
                     value=155.0,
                     choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
@@ -62,15 +54,6 @@ def inference_tab():
                     info="-24 — Мужская модель | 24 — Женская модель",
                     interactive=True,
                     visible=True,
-                )
-                autotune_strength = gr.Slider(
-                    minimum=0,
-                    maximum=1,
-                    step=0.1,
-                    value=1,
-                    label="Сила коррекции автотюна",
-                    interactive=True,
-                    visible=False,
                 )
 
         with gr.Column(scale=2, variant="panel"):
@@ -131,7 +114,7 @@ def inference_tab():
                 )
 
     # Компонент настроек
-    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, f0_min, f0_max = settings()
+    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_scale, autotune_strength, f0_min, f0_max = settings()
 
     # Загрузка файлов
     local_file.input(process_file_upload, inputs=[local_file], outputs=[song_input, local_file])
@@ -141,9 +124,6 @@ def inference_tab():
     show_enter_button.click(swap_visibility, outputs=[enter_local_file, upload_file, song_input, local_file])
     show_upload_button.click(swap_buttons, outputs=[show_upload_button, show_enter_button])
     show_enter_button.click(swap_buttons, outputs=[show_enter_button, show_upload_button])
-
-    # Показать autotune_strength
-    autotune.change(show_autotune, inputs=autotune, outputs=autotune_strength)
 
     # Обновление метода регулировки высоты тона
     autopitch.change(update_visible, inputs=autopitch, outputs=[autopitch_threshold, rvc_pitch])
@@ -209,46 +189,29 @@ def edge_tts_tab():
         with gr.Column(variant="panel", scale=2):
             with gr.Column():
                 with gr.Group():
-                    with gr.Row():
-                        autopitch = gr.Checkbox(
-                            value=False,
-                            label="Автоматическое определение высоты тона",
-                            interactive=True,
-                            visible=True,
-                        )
-                        autotune = gr.Checkbox(
-                            value=False,
-                            label="Коррекция высоты тона (АвтоТюн)",
-                            interactive=True,
-                            visible=True,
-                        )
-                    with gr.Row():
-                        autopitch_threshold = gr.Radio(
-                            value=155.0,
-                            choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
-                            show_label=False,
-                            interactive=True,
-                            visible=False,
-                        )
-                        rvc_pitch = gr.Slider(
-                            minimum=-24,
-                            maximum=24,
-                            step=1,
-                            value=0,
-                            label="Регулировка высоты тона",
-                            info="-24 — Мужская модель || 24 — Женская модель",
-                            interactive=True,
-                            visible=True,
-                        )
-                        autotune_strength = gr.Slider(
-                            minimum=0,
-                            maximum=1,
-                            step=0.1,
-                            value=1,
-                            label="Сила коррекции автотюна",
-                            interactive=True,
-                            visible=False,
-                        )
+                    autopitch = gr.Checkbox(
+                        value=False,
+                        label="Автоматическое определение высоты тона",
+                        interactive=True,
+                        visible=True,
+                    )
+                    autopitch_threshold = gr.Radio(
+                        value=155.0,
+                        choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
+                        show_label=False,
+                        interactive=True,
+                        visible=False,
+                    )
+                    rvc_pitch = gr.Slider(
+                        minimum=-24,
+                        maximum=24,
+                        step=1,
+                        value=0,
+                        label="Регулировка высоты тона",
+                        info="-24 — Мужская модель || 24 — Женская модель",
+                        interactive=True,
+                        visible=True,
+                    )
             synth_voice = gr.Audio(
                 label="Синтзированный TTS голос",
                 show_download_button=True,
@@ -320,16 +283,13 @@ def edge_tts_tab():
                 )
 
     # Компонент настроек
-    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, f0_min, f0_max = settings()
+    f0_method, index_rate, volume_envelope, protect, stereo_sound, audio_upscaling, autotune, autotune_scale, autotune_strength, f0_min, f0_max = settings()
 
     # Обновление списка TTS-голосов
     language.change(update_edge_voices, inputs=language, outputs=tts_voice)
 
     # Обновление метода регулировки высоты тона
     autopitch.change(update_visible, inputs=autopitch, outputs=[autopitch_threshold, rvc_pitch])
-
-    # Показать autotune_strength
-    autotune.change(show_autotune, inputs=autotune, outputs=autotune_strength)
 
     # Обновление списка моделей
     ref_btn.click(update_models_list, None, outputs=rvc_model)
