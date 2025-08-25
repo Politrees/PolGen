@@ -76,7 +76,7 @@ def settings():
                                     with gr.Row():
                                         autotune_tonic = gr.Dropdown(
                                             value="C",
-                                            label="Ключ",
+                                            label="Тоника",
                                             choices=["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"],
                                             interactive=True,
                                             visible=False,
