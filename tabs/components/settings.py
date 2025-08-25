@@ -49,7 +49,7 @@ def settings():
             with gr.Accordion("Дополнительные настройки", open=False):
                 with gr.Group():
                     with gr.Column():
-                        with gr.Row(equal_height=True, variant="panel"):
+                        with gr.Row(variant="panel"):
                             stereo_sound = gr.Checkbox(
                                 value=False,
                                 label="Преобразовать в стерео",
