@@ -53,7 +53,6 @@ class VC:
         self.t_center = self.sample_rate * self.x_center
         self.t_max = self.sample_rate * self.x_max
         self.device = config.device
-        self.autotune = AutoTune()
 
     def get_f0(
         self,
@@ -66,6 +65,8 @@ class VC:
         autopitch,
         autopitch_threshold,
         autotune,
+        autotune_tonic,
+        autotune_scale,
         autotune_strength,
     ):
         """Получает F0 с использованием выбранного метода."""
@@ -95,7 +96,8 @@ class VC:
 
         # АвтоТюн (коррекция высоты тона)
         if autotune is True:
-            f0 = self.autotune.autotune_f0(f0, autotune_strength)
+            AT = AutoTune(scale_name=autotune_scale, tonic_note=autotune_tonic)
+            f0 = AT.apply_autotune(f0, autotune_strength)
 
         f0 = np.multiply(f0, pow(2, pitch / 12))
         f0_mel = 1127 * np.log(1 + f0 / 700)
@@ -201,6 +203,8 @@ class VC:
         autopitch,
         autopitch_threshold,
         autotune,
+        autotune_tonic,
+        autotune_scale,
         autotune_strength,
     ):
         """Основной конвейер для преобразования аудио."""
@@ -246,6 +250,8 @@ class VC:
                 autopitch,
                 autopitch_threshold,
                 autotune,
+                autotune_tonic,
+                autotune_scale,
                 autotune_strength,
             )
             pitch = pitch[:p_len]

@@ -86,7 +86,7 @@ def update_visible(autopitch):
 
 
 def show_autotune(autotune):
-    return gr.update(visible=autotune)
+    return gr.update(visible=autotune), gr.update(visible=autotune), gr.update(visible=autotune)
 
 
 def output_message():
