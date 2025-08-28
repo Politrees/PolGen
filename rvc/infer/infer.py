@@ -37,22 +37,18 @@ def display_progress(percent, message, is_print, progress=gr.Progress()):
 
 # Загружает модель RVC и индекс по имени модели.
 def load_rvc_model(rvc_model):
-    # Формируем путь к директории модели
     model_dir = os.path.join(RVC_MODELS_DIR, rvc_model)
-    # Получаем список файлов в директории модели
-    model_files = os.listdir(model_dir)
+    if not os.path.isdir(model_dir):
+        raise FileNotFoundError(f"Папка модели {rvc_model} не найдена в {RVC_MODELS_DIR}")
 
     # Находим файл модели с расширением .pth
-    rvc_model_path = next((os.path.join(model_dir, f) for f in model_files if f.endswith(".pth")), None)
+    rvc_model_path = next((os.path.join(model_dir, f) for f in os.listdir(model_dir) if f.endswith(".pth")), None)
     # Находим файл индекса с расширением .index
-    rvc_index_path = next((os.path.join(model_dir, f) for f in model_files if f.endswith(".index")), None)
+    rvc_index_path = next((os.path.join(model_dir, f) for f in os.listdir(model_dir) if f.endswith(".index")), None)
 
     # Проверяем, существует ли файл модели
     if not rvc_model_path:
-        raise ValueError(
-            f"\033[91mОШИБКА!\033[0m Модель {rvc_model} не обнаружена. "
-            "Возможно, вы допустили ошибку в названии или указали неверную ссылку при установке.",
-        )
+        raise FileNotFoundError(f"Модель {rvc_model} не содержит .pth файла!")
 
     return rvc_model_path, rvc_index_path
 
@@ -65,12 +61,10 @@ def load_hubert(model_path):
 
 # Получает конвертер голоса
 def get_vc(model_path):
-    # Загружаем состояние модели из файла
+    # Загружаем состояние модели
     cpt = torch.load(model_path, map_location="cpu", weights_only=True)
-
-    # Проверяем корректность формата модели
     if "config" not in cpt or "weight" not in cpt:
-        raise ValueError(f"Некорректный формат для {model_path}. Используйте голосовую модель, обученную на RVC v2.")
+        raise ValueError(f"Некорректный формат модели {model_path}. Используйте модель RVC.")
 
     # Извлекаем параметры модели
     tgt_sr = cpt["config"][-1]
@@ -87,8 +81,7 @@ def get_vc(model_path):
     # Удаляем ненужный слой
     del net_g.enc_q
     net_g.load_state_dict(cpt["weight"], strict=False)
-    net_g = net_g.to(config.device).float()
-    net_g.eval()
+    net_g = net_g.to(config.device).float().eval()
 
     # Инициализируем объект конвертера голоса
     vc = VC(tgt_sr, config)
@@ -97,18 +90,10 @@ def get_vc(model_path):
 
 # Синтезирует текст в речь с использованием edge_tts.
 async def text_to_speech(voice, text, rate, volume, pitch, output_path):
-    if not -100 <= rate <= 100:
-        raise ValueError("Rate должен быть в диапазоне от -100% до +100%")
-    if not -100 <= volume <= 100:
-        raise ValueError("Volume должен быть в диапазоне от -100% до +100%")
-    if not -100 <= pitch <= 100:
-        raise ValueError("Pitch должен быть в диапазоне от -100Hz до +100Hz")
+    if not -100 <= rate <= 100 or not -100 <= volume <= 100 or not -100 <= pitch <= 100:
+        raise ValueError("Параметры Rate, Volume и Pitch должны быть в диапазоне от -100 до +100.")
 
-    rate = f"+{rate}%" if rate >= 0 else f"{rate}%"
-    volume = f"+{volume}%" if volume >= 0 else f"{volume}%"
-    pitch = f"+{pitch}Hz" if pitch >= 0 else f"{pitch}Hz"
-
-    communicate = edge_tts.Communicate(voice=voice, text=text, rate=rate, volume=volume, pitch=pitch)
+    communicate = edge_tts.Communicate(voice=voice, text=text, rate=f"{rate:+d}%", volume=f"{volume:+d}%", pitch=f"{pitch:+d}Hz")
     await communicate.save(output_path)
 
 
@@ -135,17 +120,17 @@ def rvc_infer(
     progress=gr.Progress(track_tqdm=True),
 ):
     if not rvc_model:
-        raise ValueError("Выберите модель голоса для преобразования.")
+        raise ValueError("Не выбрана модель для RVC-инференса")
     if not os.path.exists(input_path):
-        raise ValueError(f"Не удалось найти файл '{input_path}'. Убедитесь, что он загрузился или проверьте правильность пути к нему.")
+        raise FileNotFoundError(f"Файл '{input_path}' не найден!")
 
     display_progress(0, "\n[⚙️] Запуск конвейера генерации...", True)
 
     # Загружаем модель Hubert
-    display_progress(0.1, "Загружаем модель Hubert...", False)
+    display_progress(0.1, "Загружаем модель HuBERT...", False)
     hubert_model = load_hubert(HUBERT_BASE_PATH)
     # Загружаем модель RVC и индекс
-    display_progress(0.2, "Загружаем модель RVC и индекс...", False)
+    display_progress(0.2, f"Загружаем модель '{rvc_model}'...", False)
     model_path, index_path = load_rvc_model(rvc_model)
     # Получаем конвертер голоса
     display_progress(0.3, "Получаем конвертер голоса...", False)
@@ -154,15 +139,15 @@ def rvc_infer(
     # Построение имени выходного файла
     base_name = os.path.splitext(os.path.basename(input_path))[0]
     if len(base_name) > 50:
-        gr.Warning("Имя файла превышает 50 символов и будет сокращено для удобства использования.")
+        gr.Warning("Имя файла превышает 50 символов и будет сокращено для удобства.")
         base_name = "Made_in_PolGen"  # Сменить имя файла, если длина исходного более 50 символов
     output_path = os.path.join(OUTPUT_DIR, f"{base_name}_({rvc_model}).{output_format}")
 
     # Загружаем аудиофайл
-    display_progress(0.4, "Загружаем аудиофайл...", False)
+    display_progress(0.4, "Загружаем аудио...", False)
     audio = load_audio(input_path, 16000)
 
-    display_progress(0.5, f"[🌌] Преобразование аудио — {base_name}...", True)
+    display_progress(0.5, f"[🌌] Преобразуем аудио '{base_name}'...", True)
     audio_opt = vc.pipeline(
         model=hubert_model,
         net_g=net_g,
@@ -193,7 +178,7 @@ def rvc_infer(
     audio_segment.export(output_path, format=output_format)
 
     if audio_upscaling:
-        display_progress(0.9, "[🚀] Улучшение качества аудио...", True)
+        display_progress(0.9, "[🚀] Улучшаем качество аудио...", True)
         upscale(output_path, OUTPUT_DIR, 2, config.device)
 
     # Освобождаем память
@@ -235,9 +220,9 @@ def rvc_edgetts_infer(
     progress=gr.Progress(track_tqdm=True),
 ):
     if not tts_text:
-        raise ValueError("Введите необходимый текст в поле для ввода.")
+        raise ValueError("Введите текст!")
     if not tts_voice:
-        raise ValueError("Выберите язык и голос для синтеза речи.")
+        raise ValueError("Выберите голос!")
 
     display_progress(1.0, "[🎙️] Синтезируем речь...", False)
     input_path = os.path.join(OUTPUT_DIR, "TTS_Voice.wav")
