@@ -9,9 +9,9 @@ torchvision==0.22.1
 
 # Аудиообработка
 pydub
-edge-tts
 PolFlashSR
 PolUVR[gpu]
+edge-tts==7.2.1
 ffmpeg-python>=0.2.0
 
 # Отслеживание высоты тона
