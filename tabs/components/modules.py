@@ -5,7 +5,7 @@ import gradio as gr
 
 from rvc.infer.infer import RVC_MODELS_DIR
 
-OUTPUT_FORMAT = ["wav", "flac", "mp3", "ogg", "opus", "m4a", "aiff", "ac3"]
+OUTPUT_FORMAT = ["wav", "flac", "mp3", "ogg", "m4a"]
 
 edge_voices = {
     "Английский (Великобритания)": ["en-GB-SoniaNeural", "en-GB-RyanNeural"],

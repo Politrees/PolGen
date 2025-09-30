@@ -8,7 +8,6 @@ torchaudio==2.7.1
 torchvision==0.22.1
 
 # Аудиообработка
-pydub
 PolFlashSR
 PolUVR[gpu]
 edge-tts==7.2.1

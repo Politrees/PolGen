@@ -6,13 +6,12 @@ import edge_tts
 import gradio as gr
 import numpy as np
 import torch
-from pydub import AudioSegment
 
 from rvc.infer.config import Config
 from rvc.infer.pipeline import VC
 from rvc.lib.algorithm.synthesizers import Synthesizer
 from rvc.lib.fairseq import load_model
-from rvc.lib.my_utils import load_audio
+from rvc.lib.my_utils import load_audio, save_audio
 from rvc.modules.audio_upscaler import upscale
 
 # Определяем пути к папкам и файлам (константы)
@@ -170,12 +169,10 @@ def rvc_infer(
         autotune_scale=autotune_scale,
         autotune_strength=autotune_strength,
     )
-    # Сохраняем файл и конвертируем его в выбранный формат
+    
+    # Сохраняем файл
     display_progress(0.8, "[💫] Сохраняем результат...", True)
-    audio_segment = AudioSegment(data=(audio_opt * 32767).astype(np.int16).tobytes(), sample_width=2, frame_rate=tgt_sr, channels=1)
-    if stereo_sound:
-        audio_segment = audio_segment.set_channels(2)
-    audio_segment.export(output_path, format=output_format)
+    save_audio(audio_opt, tgt_sr, output_path, output_format, stereo_sound)
 
     if audio_upscaling:
         display_progress(0.9, "[🚀] Улучшаем качество аудио...", True)
