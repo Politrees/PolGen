@@ -23,10 +23,10 @@ running_interface() {
     echo "Running Interface..."
     if [ "$INTERNET_AVAILABLE" -eq 1 ]; then
         echo "Running app.py in ONLINE mode..."
-        "./env/bin/python" app.py --open
+        "./env/bin/python" app.py
     else
         echo "Running app.py in OFFLINE mode..."
-        "./env/bin/python" app.py --offline --open
+        "./env/bin/python" app.py --offline
     fi
 }
 

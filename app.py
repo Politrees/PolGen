@@ -14,6 +14,7 @@ import gradio as gr
 from PolUVR.utils import PolUVR_UI
 
 from assets.model_installer import check_and_install_models
+from assets.notebook_check import colab_check, kaggle_check
 from tabs.components.modules import output_message
 from tabs.inference import edge_tts_tab, inference_tab
 from tabs.install import files_upload, install_hubert_tab, url_zip_download, zip_upload
@@ -25,6 +26,7 @@ DEFAULT_PORT = 4000
 MAX_PORT_ATTEMPTS = 10
 
 OUTPUT_MESSAGE_COMPONENT = output_message()
+RUN_FROM_JUPYTER_NOTEBOOKS = colab_check() or kaggle_check()
 
 
 def is_offline_mode() -> bool:
@@ -81,9 +83,9 @@ with gr.Blocks(
 def launch_gradio(server_name: str, server_port: int) -> None:
     PolGen.launch(
         favicon_path="assets/logo.ico",
-        inbrowser="--open" in sys.argv,
-        share="--share" in sys.argv,
-        quiet="--quiet" in sys.argv,
+        inbrowser=not RUN_FROM_JUPYTER_NOTEBOOKS,
+        share=RUN_FROM_JUPYTER_NOTEBOOKS,
+        quiet=RUN_FROM_JUPYTER_NOTEBOOKS,
         server_name=server_name,
         server_port=server_port,
         show_error=True,
@@ -100,6 +102,7 @@ def get_value_from_args(key: str, default: Any = None) -> Any:
 
 
 if __name__ == "__main__":
+    print("Среда запуска: ", "Jupyter Notebook" if RUN_FROM_JUPYTER_NOTEBOOKS else "LocalHost")
     print("\nЗапуск интерфейса PolGen. Подождите...")
     check_and_install_models()  # Checking and installing models
 

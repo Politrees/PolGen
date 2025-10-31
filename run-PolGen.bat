@@ -42,10 +42,10 @@ if not exist %SCRIPT% (
 
 if "%INTERNET_AVAILABLE%"=="0" (
     echo Starting in OFFLINE mode...
-    %PYTHON% %SCRIPT% --offline --open
+    %PYTHON% %SCRIPT% --offline
 ) else (
     echo Starting in ONLINE mode...
-    %PYTHON% %SCRIPT% --open
+    %PYTHON% %SCRIPT%
 )
 
 if errorlevel 1 (
