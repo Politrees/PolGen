@@ -5,7 +5,7 @@ class Config:
     def __init__(self):
         # Определение устройства
         self.device = self._get_device()
-        print(f"Используемое устройство: {self.device}")
+        print("Используемое устройство: ", self.device)
 
         # Конфигурация параметров GPU
         self.gpu_name, self.gpu_mem = self._configure_gpu() if self.device == "cuda" else (None, None)
