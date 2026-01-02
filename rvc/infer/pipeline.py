@@ -84,7 +84,7 @@ class VC:
             del model
         elif f0_method == "fcpe":
             model = FCPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)
-            f0 = model.get_f0(audio, p_len)
+            f0 = model.get_f0(audio, f0_min, f0_max, p_len)
             del model
 
         if f0 is None:
