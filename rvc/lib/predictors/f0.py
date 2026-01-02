@@ -195,7 +195,7 @@ class FCPE:
         self.hop_size = hop_size
         self.model = spawn_bundled_infer_model(self.device)
 
-    def get_f0(self, audio, p_len=None):
+    def get_f0(self, audio, f0_min=50, f0_max=1100, p_len=None, use_interpolation=False):
         if p_len is None:
             p_len = audio.shape[0] // self.hop_size
 
@@ -204,11 +204,20 @@ class FCPE:
 
         f0 = (
             self.model.infer(
-                audio.float().to(self.device).unsqueeze(0),
+                wav=audio.float().to(self.device).unsqueeze(0),
                 sr=self.sample_rate,
                 decoder_mode="local_argmax",
                 threshold=0.006,
-            )
+                f0_min=f0_min,
+                f0_max=f0_max,
+                interp_uv=use_interpolation,
+                output_interp_target_length=p_len,
+                return_uv=False,
+                test_time_augmentation=True,
+                tta_uv_penalty=12.0,
+                tta_key_shifts=[-24, -12, 0, 12, 24],
+                tta_use_origin_uv=True,
+            ) 
             .squeeze()
             .cpu()
             .numpy()
