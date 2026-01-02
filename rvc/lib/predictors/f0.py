@@ -146,12 +146,12 @@ class RMVPE:
         self.sample_rate = sample_rate
         self.model = RMVPEF0Predictor(os.path.join("rvc", "models", "predictors", "rmvpe.pt"), device=self.device)
 
-    def get_f0(self, audio, type_rmvpe="rmvpe"):
+    def get_f0(self, audio, f0_min=50, f0_max=1100, type_rmvpe="rmvpe"):
         if type_rmvpe == "rmvpe":
             return self.model.infer_from_audio(audio, thred=0.03)
 
         if type_rmvpe == "rmvpe+":
-            return self.model.infer_from_audio_modified(audio, thred=0.02)
+            return self.model.infer_from_audio_modified(audio, thred=0.02, f0_min=f0_min, f0_max=f0_max)
 
         raise ValueError(f"Недопустимое значение: {type_rmvpe!r}")
 
@@ -170,18 +170,20 @@ class CREPE:
             audio = torch.from_numpy(audio)
 
         f0, pd = torchcrepe.predict(
-            audio.float().to(self.device).unsqueeze(dim=0),
-            self.sample_rate,
-            self.hop_size,
-            f0_min,
-            f0_max,
+            audio=audio.float().to(self.device).unsqueeze(dim=0),
+            sample_rate=self.sample_rate,
+            hop_length=self.hop_size,
+            fmin=f0_min,
+            fmax=f0_max,
             model=model,
+            decoder=torchcrepe.decode.weighted_argmax,
+            return_periodicity=True,
             batch_size=512,
             device=self.device,
-            return_periodicity=True,
+            pad=True,
         )
         pd = torchcrepe.filter.median(pd, 3)
-        f0 = torchcrepe.filter.mean(f0, 3)
+        f0 = torchcrepe.filter.median(f0, 3)
         f0[pd < 0.1] = 0
         f0 = f0[0].cpu().numpy()
 

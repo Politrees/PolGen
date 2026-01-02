@@ -80,7 +80,7 @@ class VC:
             del model
         elif f0_method in ("rmvpe", "rmvpe+"):
             model = RMVPE(device=self.device, sample_rate=self.sample_rate)
-            f0 = model.get_f0(audio, f0_method)
+            f0 = model.get_f0(audio, f0_min, f0_max, f0_method)
             del model
         elif f0_method == "fcpe":
             model = FCPE(device=self.device, sample_rate=self.sample_rate, hop_size=self.window)

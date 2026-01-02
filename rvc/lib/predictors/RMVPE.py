@@ -346,7 +346,7 @@ class RMVPEF0Predictor:
         f0 = self.decode(hidden, thred=thred)
         return f0
 
-    def infer_from_audio_modified(self, audio, thred=0.02, f0_min=50, f0_max=1100, window_size=5):
+    def infer_from_audio_modified(self, audio, thred=0.02, f0_min=50, f0_max=1100, window_size=3):
         audio = torch.from_numpy(audio).float().to(self.device).unsqueeze(0)
         extracted_mel = self.mel_extractor(audio, center=True)
         del audio
