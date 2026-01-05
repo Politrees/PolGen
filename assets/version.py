@@ -18,8 +18,7 @@ def get_version() -> str:
         with open(VERSION_FILE, encoding="utf-8") as f:
             version = f.read().strip()
             # Удаляем префикс 'v' если есть
-            if version.startswith("v"):
-                version = version[1:]
+            version = version.removeprefix("v")
             return version
     except FileNotFoundError:
         return "unknown"
@@ -37,6 +36,7 @@ def get_version_info() -> dict:
             'prerelease': 'beta.8',
             'is_prerelease': True
         }
+
     """
     version = get_version()
 

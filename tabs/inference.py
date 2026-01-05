@@ -88,31 +88,30 @@ def inference_tab():
                     visible=True,
                 )
 
-    with gr.Group():
-        with gr.Row(equal_height=True):
-            generate_btn = gr.Button(
-                value="Генерировать",
-                variant="primary",
+    with gr.Group(), gr.Row(equal_height=True):
+        generate_btn = gr.Button(
+            value="Генерировать",
+            variant="primary",
+            interactive=True,
+            visible=True,
+            scale=2,
+        )
+        converted_voice = gr.Audio(
+            label="Преобразованный голос",
+            show_download_button=True,
+            show_share_button=False,
+            interactive=False,
+            visible=True,
+            scale=9,
+        )
+        with gr.Column(min_width=160):
+            output_format = gr.Dropdown(
+                value="mp3",
+                label="Формат файла",
+                choices=OUTPUT_FORMAT,
                 interactive=True,
                 visible=True,
-                scale=2,
             )
-            converted_voice = gr.Audio(
-                label="Преобразованный голос",
-                show_download_button=True,
-                show_share_button=False,
-                interactive=False,
-                visible=True,
-                scale=9,
-            )
-            with gr.Column(min_width=160):
-                output_format = gr.Dropdown(
-                    value="mp3",
-                    label="Формат файла",
-                    choices=OUTPUT_FORMAT,
-                    interactive=True,
-                    visible=True,
-                )
 
     # Компонент настроек
     (
@@ -206,31 +205,30 @@ def edge_tts_tab():
                     visible=True,
                 )
         with gr.Column(variant="panel", scale=2):
-            with gr.Column():
-                with gr.Group():
-                    autopitch = gr.Checkbox(
-                        value=False,
-                        label="Автоматическое определение высоты тона",
-                        interactive=True,
-                        visible=True,
-                    )
-                    autopitch_threshold = gr.Radio(
-                        value=155.0,
-                        choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
-                        show_label=False,
-                        interactive=True,
-                        visible=False,
-                    )
-                    rvc_pitch = gr.Slider(
-                        minimum=-24,
-                        maximum=24,
-                        step=1,
-                        value=0,
-                        label="Регулировка высоты тона",
-                        info="-24 — Мужская модель || 24 — Женская модель",
-                        interactive=True,
-                        visible=True,
-                    )
+            with gr.Column(), gr.Group():
+                autopitch = gr.Checkbox(
+                    value=False,
+                    label="Автоматическое определение высоты тона",
+                    interactive=True,
+                    visible=True,
+                )
+                autopitch_threshold = gr.Radio(
+                    value=155.0,
+                    choices=[("Мужская модель", 155.0), ("Женская модель", 255.0)],
+                    show_label=False,
+                    interactive=True,
+                    visible=False,
+                )
+                rvc_pitch = gr.Slider(
+                    minimum=-24,
+                    maximum=24,
+                    step=1,
+                    value=0,
+                    label="Регулировка высоты тона",
+                    info="-24 — Мужская модель || 24 — Женская модель",
+                    interactive=True,
+                    visible=True,
+                )
             synth_voice = gr.Audio(
                 label="Синтзированный TTS голос",
                 show_download_button=True,
@@ -239,67 +237,64 @@ def edge_tts_tab():
                 visible=True,
             )
 
-    with gr.Accordion("Настройки синтеза речи", open=False):
-        with gr.Group():
-            with gr.Row():
-                tts_pitch = gr.Slider(
-                    minimum=-100,
-                    maximum=100,
-                    step=1,
-                    value=0,
-                    label="Регулировка высоты тона TTS",
-                    info="-100 - мужской голос || 100 - женский голос",
-                    interactive=True,
-                    visible=True,
-                )
-                tts_volume = gr.Slider(
-                    minimum=-100,
-                    maximum=100,
-                    step=1,
-                    value=0,
-                    label="Громкость речи",
-                    info="Громкость воспроизведения синтеза речи",
-                    interactive=True,
-                    visible=True,
-                )
-                tts_rate = gr.Slider(
-                    minimum=-100,
-                    maximum=100,
-                    step=1,
-                    value=0,
-                    label="Скорость речи",
-                    info="Скорость воспроизведения синтеза речи",
-                    interactive=True,
-                    visible=True,
-                )
+    with gr.Accordion("Настройки синтеза речи", open=False), gr.Group(), gr.Row():
+        tts_pitch = gr.Slider(
+            minimum=-100,
+            maximum=100,
+            step=1,
+            value=0,
+            label="Регулировка высоты тона TTS",
+            info="-100 - мужской голос || 100 - женский голос",
+            interactive=True,
+            visible=True,
+        )
+        tts_volume = gr.Slider(
+            minimum=-100,
+            maximum=100,
+            step=1,
+            value=0,
+            label="Громкость речи",
+            info="Громкость воспроизведения синтеза речи",
+            interactive=True,
+            visible=True,
+        )
+        tts_rate = gr.Slider(
+            minimum=-100,
+            maximum=100,
+            step=1,
+            value=0,
+            label="Скорость речи",
+            info="Скорость воспроизведения синтеза речи",
+            interactive=True,
+            visible=True,
+        )
 
     tts_text = gr.Textbox(label="Введите текст", lines=5)
 
-    with gr.Group():
-        with gr.Row(equal_height=True):
-            generate_btn = gr.Button(
-                value="Генерировать",
-                variant="primary",
+    with gr.Group(), gr.Row(equal_height=True):
+        generate_btn = gr.Button(
+            value="Генерировать",
+            variant="primary",
+            interactive=True,
+            visible=True,
+            scale=2,
+        )
+        converted_synth_voice = gr.Audio(
+            label="Преобразованный TTS голос",
+            show_download_button=True,
+            show_share_button=False,
+            interactive=False,
+            visible=True,
+            scale=9,
+        )
+        with gr.Column(min_width=160):
+            output_format = gr.Dropdown(
+                value="mp3",
+                label="Формат файла",
+                choices=OUTPUT_FORMAT,
                 interactive=True,
                 visible=True,
-                scale=2,
             )
-            converted_synth_voice = gr.Audio(
-                label="Преобразованный TTS голос",
-                show_download_button=True,
-                show_share_button=False,
-                interactive=False,
-                visible=True,
-                scale=9,
-            )
-            with gr.Column(min_width=160):
-                output_format = gr.Dropdown(
-                    value="mp3",
-                    label="Формат файла",
-                    choices=OUTPUT_FORMAT,
-                    interactive=True,
-                    visible=True,
-                )
 
     # Компонент настроек
     (

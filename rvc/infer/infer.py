@@ -4,7 +4,6 @@ import os
 
 import edge_tts
 import gradio as gr
-import numpy as np
 import torch
 
 from rvc.infer.config import Config
@@ -169,7 +168,7 @@ def rvc_infer(
         autotune_scale=autotune_scale,
         autotune_strength=autotune_strength,
     )
-    
+
     # Сохраняем файл
     display_progress(0.8, "[💫] Сохраняем результат...", True)
     save_audio(audio_opt, tgt_sr, output_path, output_format, stereo_sound)

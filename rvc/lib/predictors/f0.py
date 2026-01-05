@@ -37,17 +37,14 @@ class AutoTune:
             "chromatic": list(range(12)),  # Все 12 нот (полутонов)
             "major": [0, 2, 4, 5, 7, 9, 11],  # Мажорная гамма (Ionian)
             "minor": [0, 2, 3, 5, 7, 8, 10],  # Минорная гамма (Aeolian)
-
             # Модальные
             "dorian": [0, 2, 3, 5, 7, 9, 10],  # Дорийский лад
             "phrygian": [0, 1, 3, 5, 7, 8, 10],  # Фригийский лад
             "lydian": [0, 2, 4, 6, 7, 9, 11],  # Лидийский лад
             "mixolydian": [0, 2, 4, 5, 7, 9, 10],  # Миксолидийский лад
-
             # Миноры
             "harmonic_minor": [0, 2, 3, 5, 7, 8, 11],  # Гармонический минор
             "melodic_minor": [0, 2, 3, 5, 7, 9, 11],  # Мелодический минор
-
             # Пентатоники и блюз
             "pentatonic_major": [0, 2, 4, 7, 9],  # Мажорная пентатоника
             "pentatonic_minor": [0, 3, 5, 7, 10],  # Минорная пентатоника
@@ -132,7 +129,9 @@ class AutoTune:
 
         # Определяем, какая из двух нот ближе к текущей частоте
         closest_target_frequencies = np.where(
-            np.abs(voiced_f0 - lower_note_freq) < np.abs(voiced_f0 - upper_note_freq), lower_note_freq, upper_note_freq
+            np.abs(voiced_f0 - lower_note_freq) < np.abs(voiced_f0 - upper_note_freq),
+            lower_note_freq,
+            upper_note_freq,
         )
 
         # Применяем коррекцию: сдвигаем частоту в сторону ближайшей ноты с заданной силой
@@ -219,7 +218,7 @@ class FCPE:
                 tta_uv_penalty=12.0,
                 tta_key_shifts=[-24, -12, 0, 12, 24],
                 tta_use_origin_uv=True,
-            ) 
+            )
             .squeeze()
             .cpu()
             .numpy()
