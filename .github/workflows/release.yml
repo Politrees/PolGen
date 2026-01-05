@@ -120,35 +120,35 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
-          echo "🐍 Создание Python окружения..."
+          echo "Creating Python environment..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
           
-          echo "📦 Установка зависимостей..."
+          echo "Installing dependencies..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 \
             --index-url https://download.pytorch.org/whl/cu128
           uv pip install -r requirements.txt
           
-          echo "✅ Зависимости установлены"
+          echo "Dependencies installed"
 
       - name: Download FFmpeg
         shell: powershell
         run: |
-          echo "📥 Скачивание FFmpeg..."
+          Write-Host "Downloading FFmpeg..."
           $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffmpeg.exe" -OutFile "ffmpeg.exe"
           Invoke-WebRequest -Uri "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffprobe.exe" -OutFile "ffprobe.exe"
-          echo "✅ FFmpeg скачан"
+          Write-Host "FFmpeg downloaded"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
-          echo "📥 Скачивание моделей RVC..."
+          echo "Downloading RVC models..."
           conda activate ./env
           python -m assets.model_installer
-          echo "✅ Модели скачаны"
+          echo "Models downloaded"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
@@ -156,25 +156,25 @@ jobs:
       - name: Cleanup before archive
         shell: bash -el {0}
         run: |
-          echo "🧹 Очистка..."
-          echo "📊 Размер ДО очистки:"
+          echo "Cleanup (100% safe)..."
+          echo "Size BEFORE cleanup:"
           du -sh env || true
           
-          # Python bytecode cache (пересоздаётся автоматически)
+          # Python bytecode cache
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find env -type f -name "*.pyc" -delete 2>/dev/null || true
           
-          # Тесты пакетов (не используются в runtime)
+          # Package tests
           find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
           rm -rf env/Lib/site-packages/torch/test 2>/dev/null || true
           
-          # Документация и примеры
+          # Docs and examples
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "benchmarks" -exec rm -rf {} + 2>/dev/null || true
           
-          echo "📊 Размер ПОСЛЕ очистки:"
+          echo "Size AFTER cleanup:"
           du -sh env || true
 
       - name: Create release archive
@@ -183,7 +183,7 @@ jobs:
           $archiveName = "PolGen-${{ env.VERSION }}_Win.zip"
           $tempDir = "PolGen-${{ env.VERSION }}_Win"
           
-          Write-Host "📦 Создание архива..."
+          Write-Host "Creating archive..."
           
           New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
           
@@ -201,7 +201,7 @@ jobs:
           Remove-Item -Path $tempDir -Recurse -Force
           
           $sizeGB = [math]::Round((Get-Item $archiveName).Length / 1GB, 2)
-          Write-Host "✅ Создан: $archiveName ($sizeGB GB)"
+          Write-Host "Created: $archiveName ($sizeGB GB)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
