@@ -138,6 +138,22 @@ jobs:
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
+      - name: Cleanup before archive
+        shell: bash -el {0}
+        run: |
+          echo "🧹 Очистка кеша..."
+          # Удаляем кеш pip/uv
+          rm -rf env/pip-cache env/uv-cache 2>/dev/null || true
+          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+          
+          # Удаляем ненужные для инференса NVIDIA библиотеки
+          rm -rf env/Lib/site-packages/nvidia/nccl 2>/dev/null || true
+          rm -rf env/Lib/site-packages/nvidia/nvtx 2>/dev/null || true
+          
+          echo "📊 Размер env после очистки:"
+          du -sh env || true
+
       - name: Create release archive
         shell: powershell
         run: |
@@ -159,8 +175,8 @@ jobs:
           Compress-Archive -Path $tempDir -DestinationPath $archiveName -Force
           Remove-Item -Path $tempDir -Recurse -Force
           
-          $size = [math]::Round((Get-Item $archiveName).Length / 1MB, 2)
-          Write-Host "Created: $archiveName ($size MB)"
+          $size = [math]::Round((Get-Item $archiveName).Length / 1GB, 2)
+          Write-Host "Created: $archiveName ($size GB)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -227,6 +243,30 @@ jobs:
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
+      - name: Cleanup before archive
+        run: |
+          echo "🧹 Очистка кеша и ненужных файлов..."
+          
+          # Удаляем кеш
+          rm -rf env/pip-cache env/uv-cache 2>/dev/null || true
+          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          
+          # Удаляем ненужные для инференса NVIDIA библиотеки (экономит ~700 MB)
+          rm -rf env/lib/python*/site-packages/nvidia/nccl 2>/dev/null || true
+          rm -rf env/lib/python*/site-packages/nvidia/nvtx 2>/dev/null || true
+          rm -rf env/lib/python*/site-packages/nvidia/cuda_nvrtc 2>/dev/null || true
+          rm -rf env/lib/python*/site-packages/nvidia/nvshmem 2>/dev/null || true
+          
+          # Удаляем .so файлы для отладки
+          find env -name "*.debug" -delete 2>/dev/null || true
+          find env -name "*.a" -delete 2>/dev/null || true
+          
+          echo "📊 Размер env после очистки:"
+          du -sh env
+          
+          echo "📊 Самые большие директории в env:"
+          du -h env --max-depth=3 | sort -hr | head -20
+
       - name: Create release archive
         run: |
           ARCHIVE_NAME="PolGen-${{ env.VERSION }}_Linux.zip"
@@ -234,13 +274,20 @@ jobs:
           
           mkdir -p "$TEMP_DIR"
           rsync -a . "$TEMP_DIR" \
-            --exclude '.git' --exclude '.github' --exclude '__pycache__' \
-            --exclude '*.pyc' --exclude '.ipynb_checkpoints' \
-            --exclude "$TEMP_DIR" --exclude '*.zip'
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '__pycache__' \
+            --exclude '*.pyc' \
+            --exclude '.ipynb_checkpoints' \
+            --exclude "$TEMP_DIR" \
+            --exclude '*.zip' \
+            --exclude '*.tar.xz'
           
           zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
           rm -rf "$TEMP_DIR"
-          echo "Created: $ARCHIVE_NAME ($(du -h "$ARCHIVE_NAME" | cut -f1))"
+          
+          SIZE_GB=$(echo "scale=2; $(stat --printf="%s" "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
+          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -297,6 +344,14 @@ jobs:
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
+      - name: Cleanup before archive
+        run: |
+          echo "🧹 Очистка кеша..."
+          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          
+          echo "📊 Размер env после очистки:"
+          du -sh env
+
       - name: Create release archive
         run: |
           ARCHIVE_NAME="PolGen-${{ env.VERSION }}_MacOS.zip"
@@ -304,13 +359,20 @@ jobs:
           
           mkdir -p "$TEMP_DIR"
           rsync -a . "$TEMP_DIR" \
-            --exclude '.git' --exclude '.github' --exclude '__pycache__' \
-            --exclude '*.pyc' --exclude '.ipynb_checkpoints' --exclude '.DS_Store' \
-            --exclude "$TEMP_DIR" --exclude '*.zip'
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '__pycache__' \
+            --exclude '*.pyc' \
+            --exclude '.ipynb_checkpoints' \
+            --exclude '.DS_Store' \
+            --exclude "$TEMP_DIR" \
+            --exclude '*.zip'
           
           zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
           rm -rf "$TEMP_DIR"
-          echo "Created: $ARCHIVE_NAME ($(du -h "$ARCHIVE_NAME" | cut -f1))"
+          
+          SIZE_GB=$(echo "scale=2; $(stat -f%z "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
+          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -326,6 +388,7 @@ jobs:
   upload-to-huggingface:
     needs: [prepare, build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
 
@@ -337,7 +400,9 @@ jobs:
           merge-multiple: true
 
       - name: List artifacts
-        run: ls -lh ./artifacts/
+        run: |
+          echo "📁 Артефакты:"
+          ls -lh ./artifacts/
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -366,8 +431,8 @@ jobs:
               local_path = f"./artifacts/{filename}"
               
               if os.path.exists(local_path):
-                  size_mb = os.path.getsize(local_path) / (1024 * 1024)
-                  print(f"📤 Uploading {filename} ({size_mb:.1f} MB)...")
+                  size_gb = os.path.getsize(local_path) / (1024 ** 3)
+                  print(f"📤 Uploading {filename} ({size_gb:.2f} GB)...")
                   try:
                       api.upload_file(
                           path_or_fileobj=local_path,
@@ -381,6 +446,8 @@ jobs:
                       print(f"   ✅ Done!")
                   except Exception as e:
                       print(f"   ❌ Error: {e}")
+              else:
+                  print(f"⚠️ Not found: {local_path}")
           
           print(f"\n🎉 Uploaded: {', '.join(uploaded)}")
           EOF
