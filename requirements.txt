@@ -3,12 +3,9 @@ gradio==5.35.0
 
 # Основные ML-фреймворки
 numpy==1.26.4
-torch==2.7.1; sys_platform == 'darwin'
-torch==2.7.1+cu128; sys_platform == 'linux' or sys_platform == 'win32'
-torchaudio==2.7.1; sys_platform == 'darwin'
-torchaudio==2.7.1+cu128; sys_platform == 'linux' or sys_platform == 'win32'
-torchvision==0.22.1; sys_platform == 'darwin'
-torchvision==0.22.1+cu128; sys_platform == 'linux' or sys_platform == 'win32'
+# torch
+# torchaudio
+# torchvision
 
 # Аудиообработка
 PolFlashSR
