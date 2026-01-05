@@ -61,3 +61,7 @@ def check_and_install_models():
         print(f"Произошла ошибка при загрузке модели: {e}")
     except Exception as e:
         print(f"Произошла непредвиденная ошибка: {e}")
+
+
+if __name__ == "__main__":
+    check_and_install_models()
