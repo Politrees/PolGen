@@ -53,7 +53,8 @@ jobs:
           VERSION="${VERSION#v}"
           
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "ERROR: Invalid version format: $VERSION"
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: X.Y.Z or X.Y.Z-prerelease (e.g., 1.4.0, 1.4.0-beta.1)"
             exit 1
           fi
           
@@ -66,6 +67,10 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_tag=v$VERSION" >> $GITHUB_OUTPUT
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          
+          echo "📦 Version: $VERSION"
+          echo "🏷️ Tag: v$VERSION"
+          echo "🚧 Pre-release: $IS_PRERELEASE"
 
       - name: Update VERSION file
         run: echo "${{ steps.get_version.outputs.version }}" > VERSION
@@ -83,10 +88,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION README.md
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "✅ No changes to commit"
           else
             git commit -m "chore: bump version to ${{ steps.get_version.outputs.version }}"
             git push origin HEAD:PolGen
+            echo "✅ Changes pushed successfully"
           fi
 
   # ═══════════════════════════════════════════════════════════════
@@ -114,26 +120,35 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
+          echo "🐍 Создание Python окружения..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
+          
+          echo "📦 Установка зависимостей..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 \
             --index-url https://download.pytorch.org/whl/cu128
           uv pip install -r requirements.txt
+          
+          echo "✅ Зависимости установлены"
 
       - name: Download FFmpeg
         shell: powershell
         run: |
+          echo "📥 Скачивание FFmpeg..."
           $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffmpeg.exe" -OutFile "ffmpeg.exe"
           Invoke-WebRequest -Uri "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffprobe.exe" -OutFile "ffprobe.exe"
+          echo "✅ FFmpeg скачан"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
+          echo "📥 Скачивание моделей RVC..."
           conda activate ./env
           python -m assets.model_installer
+          echo "✅ Модели скачаны"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
@@ -141,17 +156,25 @@ jobs:
       - name: Cleanup before archive
         shell: bash -el {0}
         run: |
-          echo "🧹 Очистка кеша..."
-          # Удаляем кеш pip/uv
-          rm -rf env/pip-cache env/uv-cache 2>/dev/null || true
+          echo "🧹 Очистка..."
+          echo "📊 Размер ДО очистки:"
+          du -sh env || true
+          
+          # Python bytecode cache (пересоздаётся автоматически)
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-          find env -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+          find env -type f -name "*.pyc" -delete 2>/dev/null || true
           
-          # Удаляем ненужные для инференса NVIDIA библиотеки
-          rm -rf env/Lib/site-packages/nvidia/nccl 2>/dev/null || true
-          rm -rf env/Lib/site-packages/nvidia/nvtx 2>/dev/null || true
+          # Тесты пакетов (не используются в runtime)
+          find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
+          rm -rf env/Lib/site-packages/torch/test 2>/dev/null || true
           
-          echo "📊 Размер env после очистки:"
+          # Документация и примеры
+          find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "benchmarks" -exec rm -rf {} + 2>/dev/null || true
+          
+          echo "📊 Размер ПОСЛЕ очистки:"
           du -sh env || true
 
       - name: Create release archive
@@ -159,6 +182,8 @@ jobs:
         run: |
           $archiveName = "PolGen-${{ env.VERSION }}_Win.zip"
           $tempDir = "PolGen-${{ env.VERSION }}_Win"
+          
+          Write-Host "📦 Создание архива..."
           
           New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
           
@@ -175,8 +200,8 @@ jobs:
           Compress-Archive -Path $tempDir -DestinationPath $archiveName -Force
           Remove-Item -Path $tempDir -Recurse -Force
           
-          $size = [math]::Round((Get-Item $archiveName).Length / 1GB, 2)
-          Write-Host "Created: $archiveName ($size GB)"
+          $sizeGB = [math]::Round((Get-Item $archiveName).Length / 1GB, 2)
+          Write-Host "✅ Создан: $archiveName ($sizeGB GB)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -198,9 +223,11 @@ jobs:
     steps:
       - name: Free disk space
         run: |
+          echo "🧹 Освобождение места на диске..."
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
           sudo apt-get clean
+          echo "📊 Свободное место:"
           df -h /
 
       - name: Checkout code
@@ -218,59 +245,73 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
+          echo "🐍 Создание Python окружения..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
+          
+          echo "📦 Установка зависимостей..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 \
             --index-url https://download.pytorch.org/whl/cu128
           uv pip install -r requirements.txt
+          
+          echo "✅ Зависимости установлены"
 
       - name: Download FFmpeg
         run: |
+          echo "📥 Скачивание FFmpeg..."
           wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
           tar -xf ffmpeg-release-amd64-static.tar.xz
           cp ffmpeg-*-amd64-static/ffmpeg ffmpeg-*-amd64-static/ffprobe .
           chmod +x ffmpeg ffprobe
           rm -rf ffmpeg-*-amd64-static*
+          echo "✅ FFmpeg скачан"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
+          echo "📥 Скачивание моделей RVC..."
           conda activate ./env
           python -m assets.model_installer
+          echo "✅ Модели скачаны"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
       - name: Cleanup before archive
         run: |
-          echo "🧹 Очистка кеша и ненужных файлов..."
-          
-          # Удаляем кеш
-          rm -rf env/pip-cache env/uv-cache 2>/dev/null || true
-          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-          
-          # Удаляем ненужные для инференса NVIDIA библиотеки (экономит ~700 MB)
-          rm -rf env/lib/python*/site-packages/nvidia/nccl 2>/dev/null || true
-          rm -rf env/lib/python*/site-packages/nvidia/nvtx 2>/dev/null || true
-          rm -rf env/lib/python*/site-packages/nvidia/cuda_nvrtc 2>/dev/null || true
-          rm -rf env/lib/python*/site-packages/nvidia/nvshmem 2>/dev/null || true
-          
-          # Удаляем .so файлы для отладки
-          find env -name "*.debug" -delete 2>/dev/null || true
-          find env -name "*.a" -delete 2>/dev/null || true
-          
-          echo "📊 Размер env после очистки:"
+          echo "🧹 Очистка..."
+          echo "📊 Размер ДО очистки:"
           du -sh env
           
-          echo "📊 Самые большие директории в env:"
-          du -h env --max-depth=3 | sort -hr | head -20
+          # Кеш установщиков
+          rm -rf ~/.cache/uv ~/.cache/pip 2>/dev/null || true
+          
+          # Python bytecode cache (пересоздаётся автоматически)
+          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find env -type f -name "*.pyc" -delete 2>/dev/null || true
+          find env -type f -name "*.pyo" -delete 2>/dev/null || true
+          
+          # Тесты пакетов (не используются в runtime)
+          find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
+          rm -rf env/lib/python*/site-packages/torch/test 2>/dev/null || true
+          
+          # Документация и примеры
+          find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "benchmarks" -exec rm -rf {} + 2>/dev/null || true
+          
+          echo "📊 Размер ПОСЛЕ очистки:"
+          du -sh env
 
       - name: Create release archive
         run: |
           ARCHIVE_NAME="PolGen-${{ env.VERSION }}_Linux.zip"
           TEMP_DIR="PolGen-${{ env.VERSION }}_Linux"
+          
+          echo "📦 Создание архива..."
           
           mkdir -p "$TEMP_DIR"
           rsync -a . "$TEMP_DIR" \
@@ -287,7 +328,7 @@ jobs:
           rm -rf "$TEMP_DIR"
           
           SIZE_GB=$(echo "scale=2; $(stat --printf="%s" "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
-          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
+          echo "✅ Создан: $ARCHIVE_NAME ($SIZE_GB GB)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -322,40 +363,67 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
+          echo "🐍 Создание Python окружения..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
+          
+          echo "📦 Установка зависимостей..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1
           uv pip install -r requirements.txt
+          
+          echo "✅ Зависимости установлены"
 
       - name: Install FFmpeg
         run: |
+          echo "📥 Установка FFmpeg..."
           brew install ffmpeg
           cp $(which ffmpeg) ./ffmpeg
           cp $(which ffprobe) ./ffprobe
+          echo "✅ FFmpeg установлен"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
+          echo "📥 Скачивание моделей RVC..."
           conda activate ./env
           python -m assets.model_installer
+          echo "✅ Модели скачаны"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
       - name: Cleanup before archive
         run: |
-          echo "🧹 Очистка кеша..."
-          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          echo "🧹 Очистка..."
+          echo "📊 Размер ДО очистки:"
+          du -sh env
           
-          echo "📊 Размер env после очистки:"
+          # Python bytecode cache (пересоздаётся автоматически)
+          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find env -type f -name "*.pyc" -delete 2>/dev/null || true
+          find env -type f -name "*.pyo" -delete 2>/dev/null || true
+          
+          # Тесты пакетов (не используются в runtime)
+          find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
+          rm -rf env/lib/python*/site-packages/torch/test 2>/dev/null || true
+          
+          # Документация и примеры
+          find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "benchmarks" -exec rm -rf {} + 2>/dev/null || true
+          
+          echo "📊 Размер ПОСЛЕ очистки:"
           du -sh env
 
       - name: Create release archive
         run: |
           ARCHIVE_NAME="PolGen-${{ env.VERSION }}_MacOS.zip"
           TEMP_DIR="PolGen-${{ env.VERSION }}_MacOS"
+          
+          echo "📦 Создание архива..."
           
           mkdir -p "$TEMP_DIR"
           rsync -a . "$TEMP_DIR" \
@@ -372,7 +440,7 @@ jobs:
           rm -rf "$TEMP_DIR"
           
           SIZE_GB=$(echo "scale=2; $(stat -f%z "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
-          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
+          echo "✅ Создан: $ARCHIVE_NAME ($SIZE_GB GB)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -388,7 +456,7 @@ jobs:
   upload-to-huggingface:
     needs: [prepare, build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
 
@@ -401,7 +469,7 @@ jobs:
 
       - name: List artifacts
         run: |
-          echo "📁 Артефакты:"
+          echo "📁 Скачанные артефакты:"
           ls -lh ./artifacts/
 
       - name: Setup Python
@@ -409,11 +477,13 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install huggingface-hub
+        run: pip install huggingface-hub
+
       - name: Upload to HuggingFace
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          pip install huggingface-hub
           python << 'EOF'
           import os
           from huggingface_hub import HfApi
@@ -423,33 +493,67 @@ jobs:
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
           
-          platforms = {"Win": "Win", "Linux": "Linux", "MacOS": "MacOS"}
+          platforms = {
+              "Win": "Win",
+              "Linux": "Linux", 
+              "MacOS": "MacOS"
+          }
+          
+          print(f"🚀 Загрузка PolGen v{version} в HuggingFace...")
+          print(f"📦 Репозиторий: {repo_id}\n")
+          
           uploaded = []
+          failed = []
           
           for suffix, folder in platforms.items():
               filename = f"PolGen-{version}_{suffix}.zip"
               local_path = f"./artifacts/{filename}"
+              repo_path = f"{folder}/{filename}"
               
               if os.path.exists(local_path):
                   size_gb = os.path.getsize(local_path) / (1024 ** 3)
-                  print(f"📤 Uploading {filename} ({size_gb:.2f} GB)...")
+                  print(f"📤 Загрузка {filename} ({size_gb:.2f} GB)...")
+                  print(f"   📂 В папку: {folder}/")
+                  
                   try:
                       api.upload_file(
                           path_or_fileobj=local_path,
-                          path_in_repo=f"{folder}/{filename}",
+                          path_in_repo=repo_path,
                           repo_id=repo_id,
                           repo_type="model",
                           token=token,
                           commit_message=f"Upload PolGen v{version} for {suffix}"
                       )
                       uploaded.append(suffix)
-                      print(f"   ✅ Done!")
+                      print(f"   ✅ Успешно!\n")
                   except Exception as e:
-                      print(f"   ❌ Error: {e}")
+                      failed.append((suffix, str(e)))
+                      print(f"   ❌ Ошибка: {e}\n")
               else:
-                  print(f"⚠️ Not found: {local_path}")
+                  failed.append((suffix, "Файл не найден"))
+                  print(f"⚠️ Файл не найден: {local_path}\n")
           
-          print(f"\n🎉 Uploaded: {', '.join(uploaded)}")
+          print("=" * 50)
+          print(f"📊 Итоги загрузки v{version}")
+          print("=" * 50)
+          
+          if uploaded:
+              print(f"✅ Успешно загружено: {', '.join(uploaded)}")
+          
+          if failed:
+              print(f"❌ Ошибки: {', '.join([f[0] for f in failed])}")
+              for platform, error in failed:
+                  print(f"   - {platform}: {error}")
+          
+          print(f"\n🔗 Репозиторий: https://huggingface.co/{repo_id}")
+          print(f"\n📥 Ссылки на скачивание:")
+          for suffix, folder in platforms.items():
+              if suffix in uploaded:
+                  print(f"   {suffix}: https://huggingface.co/{repo_id}/resolve/main/{folder}/PolGen-{version}_{suffix}.zip?download=true")
+          
+          if not uploaded:
+              print("\n❌ Ничего не загружено!")
+              exit(1)
           EOF
 
   # ═══════════════════════════════════════════════════════════════
@@ -478,16 +582,18 @@ jobs:
           
           if [[ "${{ env.IS_PRERELEASE }}" == "true" ]]; then
             RELEASE_TYPE="🚧 Pre-release"
-            RELEASE_NOTE="⚠️ Это предварительная версия."
+            RELEASE_NOTE="⚠️ Это предварительная версия. Используйте на свой страх и риск."
           else
             RELEASE_TYPE="🎉 Стабильный релиз"
-            RELEASE_NOTE="✅ Рекомендуется для использования."
+            RELEASE_NOTE="✅ Это стабильная версия, рекомендованная для использования."
           fi
           
           cat << NOTES_EOF > release_notes.md
           ## ${RELEASE_TYPE}
           
           ${RELEASE_NOTE}
+          
+          ---
           
           ### 📥 Скачать
           
@@ -497,23 +603,40 @@ jobs:
           | **Linux** | [📦 PolGen-${VERSION}_Linux.zip](https://huggingface.co/${HF_REPO}/resolve/main/Linux/PolGen-${VERSION}_Linux.zip?download=true) | Ubuntu 20.04+, NVIDIA GPU |
           | **MacOS** | [📦 PolGen-${VERSION}_MacOS.zip](https://huggingface.co/${HF_REPO}/resolve/main/MacOS/PolGen-${VERSION}_MacOS.zip?download=true) | macOS 12+, Apple Silicon/Intel |
           
+          ---
+          
           ### 📦 Включено в сборку
           
           - ✅ Python окружение с зависимостями
           - ✅ FFmpeg / FFprobe
           - ✅ Модели RVC (rmvpe.pt, hubert_base.pt)
-          - ✅ Модели FlashSR
+          - ✅ Модели FlashSR (sr_vocoder, student_ldm, vae)
+          
+          ---
           
           ### 🚀 Быстрый старт
           
-          1. Скачайте архив для вашей ОС
-          2. Распакуйте в любое место
+          1. Скачайте архив для вашей ОС по ссылке выше
+          2. Распакуйте в любое удобное место
           3. Запустите:
              - **Windows**: \`run-PolGen.bat\`
              - **Linux/MacOS**: \`chmod +x run-PolGen.sh && ./run-PolGen.sh\`
           
           ---
-          📚 [Документация](https://github.com/Politrees/PolGen#readme) | 🐛 [Сообщить о проблеме](https://github.com/Politrees/PolGen/issues)
+          
+          ### 💻 Системные требования
+          
+          | Платформа | GPU | RAM | Диск |
+          |-----------|-----|-----|------|
+          | Windows | NVIDIA (CUDA 12.8) | 8+ GB | ~8 GB |
+          | Linux | NVIDIA (CUDA 12.8) | 8+ GB | ~12 GB |
+          | MacOS | Apple Silicon (MPS) / Intel | 8+ GB | ~5 GB |
+          
+          ---
+          
+          📚 **Документация**: [README](https://github.com/Politrees/PolGen#readme)
+          🐛 **Сообщить о проблеме**: [Issues](https://github.com/Politrees/PolGen/issues)
+          💬 **Telegram**: [Канал](https://t.me/pol1trees) | [Чат](https://t.me/+GMTP7hZqY0E4OGRi)
           NOTES_EOF
 
       - name: Create GitHub Release
