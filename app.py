@@ -15,6 +15,7 @@ from PolUVR.utils import PolUVR_UI
 
 from assets.model_installer import check_and_install_models
 from assets.notebook_check import colab_check, kaggle_check
+from assets.version import __version__, __version_info__
 from tabs.components.modules import output_message
 from tabs.inference import edge_tts_tab, inference_tab
 from tabs.install import files_upload, install_hubert_tab, url_zip_download, zip_upload
@@ -33,9 +34,17 @@ def is_offline_mode() -> bool:
     return "--offline" in sys.argv
 
 
+def get_title() -> str:
+    """Формирует заголовок окна с версией."""
+    base_title = f"PolGen v{__version__} - Politrees"
+    if is_offline_mode():
+        return f"{base_title} (offline)"
+    return base_title
+
+
 # Gradio Interface
 with gr.Blocks(
-    title="PolGen - Politrees" if not is_offline_mode() else "PolGen (offline) - Politrees",
+    title=get_title(),
     css="footer{display:none !important}",
     theme=gr.themes.Soft(
         primary_hue="green",
@@ -103,6 +112,14 @@ def get_value_from_args(key: str, default: Any = None) -> Any:
 
 if __name__ == "__main__":
     print("Среда запуска: ", "Jupyter Notebook" if RUN_FROM_JUPYTER_NOTEBOOKS else "LocalHost")
+
+    # Красивый вывод версии
+    print(f"\n╔{'═' * 42}╗")
+    print(f"║{'PolGen v' + __version__:^42}║")
+    if __version_info__["is_prerelease"]:
+        print(f"║{'⚠️  Pre-release версия':^42}║")
+    print(f"╚{'═' * 42}╝\n")
+
     print("\nЗапуск интерфейса PolGen. Подождите...")
     check_and_install_models()  # Checking and installing models
 
