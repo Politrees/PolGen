@@ -117,7 +117,7 @@ if __name__ == "__main__":
     print(f"\n╔{'═' * 42}╗")
     print(f"║{'PolGen v' + __version__:^42}║")
     if __version_info__["is_prerelease"]:
-        print(f"║{'⚠️  Pre-release версия':^42}║")
+        print(f"║{'⚠️ Pre-release версия':^42}║")
     print(f"╚{'═' * 42}╝\n")
 
     print("\nЗапуск интерфейса PolGen. Подождите...")
