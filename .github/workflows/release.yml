@@ -68,9 +68,9 @@ jobs:
           echo "version_tag=v$VERSION" >> $GITHUB_OUTPUT
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
           
-          echo "Version: $VERSION"
-          echo "Tag: v$VERSION"
-          echo "Pre-release: $IS_PRERELEASE"
+          echo "📦 Version: $VERSION"
+          echo "🏷️ Tag: v$VERSION"
+          echo "🚧 Pre-release: $IS_PRERELEASE"
 
       - name: Update VERSION file
         run: echo "${{ steps.get_version.outputs.version }}" > VERSION
@@ -89,11 +89,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION README.md
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "✅ No changes to commit"
           else
             git commit -m "chore: bump version to ${{ steps.get_version.outputs.version }}"
             git push origin HEAD:PolGen
-            echo "Changes pushed successfully"
+            echo "✅ Changes pushed successfully"
           fi
 
   # ═══════════════════════════════════════════════════════════════
@@ -161,8 +161,7 @@ jobs:
           Remove-Item -Path $tempDir -Recurse -Force
           
           $size = [math]::Round((Get-Item $archiveName).Length / 1MB, 2)
-          Write-Host "[OK] Created: $archiveName"
-          Write-Host "[INFO] Size: $size MB"
+          Write-Host "Created: $archiveName ($size MB)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -182,6 +181,19 @@ jobs:
       VERSION: ${{ needs.prepare.outputs.version }}
 
     steps:
+      - name: Free disk space
+        run: |
+          echo "🧹 Освобождаем место на диске..."
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/share/swift
+          sudo apt-get clean
+          echo "📊 Свободное место:"
+          df -h /
+
       - name: Checkout code
         uses: actions/checkout@v5
         with:
@@ -226,8 +238,7 @@ jobs:
           zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
           rm -rf "$TEMP_DIR"
           
-          echo "[OK] Created: $ARCHIVE_NAME"
-          echo "[INFO] Size: $(du -h "$ARCHIVE_NAME" | cut -f1)"
+          echo "✅ Created: $ARCHIVE_NAME ($(du -h "$ARCHIVE_NAME" | cut -f1))"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -295,8 +306,7 @@ jobs:
           zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
           rm -rf "$TEMP_DIR"
           
-          echo "[OK] Created: $ARCHIVE_NAME"
-          echo "[INFO] Size: $(du -h "$ARCHIVE_NAME" | cut -f1)"
+          echo "✅ Created: $ARCHIVE_NAME ($(du -h "$ARCHIVE_NAME" | cut -f1))"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -324,7 +334,7 @@ jobs:
 
       - name: List downloaded artifacts
         run: |
-          echo "Downloaded artifacts:"
+          echo "📁 Скачанные артефакты:"
           ls -lh ./artifacts/
 
       - name: Setup Python
@@ -354,9 +364,9 @@ jobs:
               "MacOS": "MacOS"
           }
           
-          print(f"Uploading PolGen v{version} to HuggingFace...")
-          print(f"Repository: {repo_id}")
-          print(f"Creating folder structure...\n")
+          print(f"🚀 Загрузка PolGen v{version} в HuggingFace...")
+          print(f"📦 Репозиторий: {repo_id}")
+          print(f"📂 Создание структуры папок...\n")
           
           uploaded = []
           failed = []
@@ -368,9 +378,9 @@ jobs:
               
               if os.path.exists(local_path):
                   size_mb = os.path.getsize(local_path) / (1024 * 1024)
-                  print(f"Uploading {filename}")
-                  print(f"   To: {repo_path}")
-                  print(f"   Size: {size_mb:.1f} MB")
+                  print(f"📤 Загрузка {filename}")
+                  print(f"   📂 В: {repo_path}")
+                  print(f"   📊 Размер: {size_mb:.1f} MB")
                   
                   try:
                       api.upload_file(
@@ -381,29 +391,29 @@ jobs:
                           token=token,
                           commit_message=f"Upload PolGen v{version} for {suffix}"
                       )
-                      print(f"   [OK] Success!\n")
+                      print(f"   ✅ Успешно!\n")
                       uploaded.append(suffix)
                   except Exception as e:
-                      print(f"   [FAIL] Failed: {e}\n")
+                      print(f"   ❌ Ошибка: {e}\n")
                       failed.append((suffix, str(e)))
               else:
-                  print(f"[WARN] File not found: {local_path}\n")
+                  print(f"⚠️ Файл не найден: {local_path}\n")
                   failed.append((suffix, "File not found"))
           
           print("=" * 50)
-          print(f"Upload Summary for v{version}")
+          print(f"📊 Итоги загрузки v{version}")
           print("=" * 50)
           
           if uploaded:
-              print(f"[OK] Successfully uploaded: {', '.join(uploaded)}")
+              print(f"✅ Успешно загружено: {', '.join(uploaded)}")
           
           if failed:
-              print(f"[FAIL] Failed: {', '.join([f[0] for f in failed])}")
+              print(f"❌ Ошибки: {', '.join([f[0] for f in failed])}")
               for platform, error in failed:
                   print(f"   - {platform}: {error}")
           
-          print(f"\nRepository: https://huggingface.co/{repo_id}")
-          print(f"\nDownload links:")
+          print(f"\n🔗 Репозиторий: https://huggingface.co/{repo_id}")
+          print(f"\n📥 Ссылки на скачивание:")
           for suffix, folder in platforms.items():
               if suffix in uploaded:
                   print(f"   {suffix}: https://huggingface.co/{repo_id}/resolve/main/{folder}/PolGen-{version}_{suffix}.zip")
@@ -437,14 +447,14 @@ jobs:
           HF_REPO="${{ env.HF_REPO }}"
           
           if [[ "${{ env.IS_PRERELEASE }}" == "true" ]]; then
-            RELEASE_TYPE="Pre-release"
-            RELEASE_NOTE="Это предварительная версия. Используйте на свой страх и риск."
+            RELEASE_TYPE="🚧 Pre-release"
+            RELEASE_NOTE="⚠️ Это предварительная версия. Используйте на свой страх и риск."
           else
-            RELEASE_TYPE="Stable Release"
-            RELEASE_NOTE="Это стабильная версия, рекомендованная для использования."
+            RELEASE_TYPE="🎉 Стабильный релиз"
+            RELEASE_NOTE="✅ Это стабильная версия, рекомендованная для использования."
           fi
           
-          cat << 'NOTES_EOF' > release_notes.md
+          cat << NOTES_EOF > release_notes.md
           ## ${RELEASE_TYPE}
           
           ${RELEASE_NOTE}
@@ -453,11 +463,11 @@ jobs:
           
           ### 📥 Скачать
           
-          | Платформа   | Ссылка | Требования   |
-          |-------------|--------|--------------|
-          | **Windows** | [📦 PolGen-${VERSION}_Win.zip](https://huggingface.co/${HF_REPO}/resolve/main/Win/PolGen-${VERSION}_Win.zip?download=true)       | Windows 10/11, NVIDIA GPU      |
-          | **Linux**   | [📦 PolGen-${VERSION}_Linux.zip](https://huggingface.co/${HF_REPO}/resolve/main/Linux/PolGen-${VERSION}_Linux.zip?download=true) | Ubuntu 20.04+, NVIDIA GPU      |
-          | **MacOS**   | [📦 PolGen-${VERSION}_MacOS.zip](https://huggingface.co/${HF_REPO}/resolve/main/MacOS/PolGen-${VERSION}_MacOS.zip?download=true) | macOS 12+, Apple Silicon/Intel |
+          | Платформа | Ссылка | Требования |
+          |-----------|--------|------------|
+          | **Windows** | [📦 PolGen-${VERSION}_Win.zip](https://huggingface.co/${HF_REPO}/resolve/main/Win/PolGen-${VERSION}_Win.zip?download=true) | Windows 10/11, NVIDIA GPU |
+          | **Linux** | [📦 PolGen-${VERSION}_Linux.zip](https://huggingface.co/${HF_REPO}/resolve/main/Linux/PolGen-${VERSION}_Linux.zip?download=true) | Ubuntu 20.04+, NVIDIA GPU |
+          | **MacOS** | [📦 PolGen-${VERSION}_MacOS.zip](https://huggingface.co/${HF_REPO}/resolve/main/MacOS/PolGen-${VERSION}_MacOS.zip?download=true) | macOS 12+, Apple Silicon/Intel |
           
           ---
           
@@ -466,29 +476,24 @@ jobs:
           1. Скачайте архив для вашей ОС по ссылке выше
           2. Распакуйте в любое удобное место
           3. Запустите:
-             - **Windows**: `run-PolGen.bat`
-             - **Linux/MacOS**: `chmod +x run-PolGen.sh && ./run-PolGen.sh`
+             - **Windows**: \`run-PolGen.bat\`
+             - **Linux/MacOS**: \`chmod +x run-PolGen.sh && ./run-PolGen.sh\`
           
           ---
           
           ### 💻 Системные требования
           
-          | Платформа     | GPU                         | RAM   | Диск   |
-          |---------------|-----------------------------|-------|--------|
-          | Windows/Linux | NVIDIA (CUDA 12.8)          | 8+ GB | ~10 GB |
-          | MacOS         | Apple Silicon (MPS) / Intel | 8+ GB | ~8 GB  |
+          | Платформа | GPU | RAM | Диск |
+          |-----------|-----|-----|------|
+          | Windows | NVIDIA (CUDA 12.8) | 8+ GB | ~10 GB |
+          | Linux | NVIDIA (CUDA 12.8) | 8+ GB | ~10 GB |
+          | MacOS | Apple Silicon (MPS) / Intel | 8+ GB | ~8 GB |
           
           ---
           
           📚 **Документация**: [README](https://github.com/Politrees/PolGen#readme)
-          🐛 **Report Issue**: [Issues](https://github.com/Politrees/PolGen/issues)
+          🐛 **Сообщить о проблеме**: [Issues](https://github.com/Politrees/PolGen/issues)
           NOTES_EOF
-          
-          # Заменяем переменные
-          sed -i "s|\${VERSION}|${VERSION}|g" release_notes.md
-          sed -i "s|\${HF_REPO}|${HF_REPO}|g" release_notes.md
-          sed -i "s|\${RELEASE_TYPE}|${RELEASE_TYPE}|g" release_notes.md
-          sed -i "s|\${RELEASE_NOTE}|${RELEASE_NOTE}|g" release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
