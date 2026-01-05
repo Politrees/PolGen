@@ -120,7 +120,7 @@ if __name__ == "__main__":
         print(f"║{'[!] Pre-release версия':^42}║")
     print(f"╚{'═' * 42}╝\n")
 
-    print("\nЗапуск интерфейса PolGen. Подождите...")
+    print("Запуск интерфейса PolGen. Подождите...")
     check_and_install_models()  # Checking and installing models
 
     port = int(get_value_from_args("--port", DEFAULT_PORT))
