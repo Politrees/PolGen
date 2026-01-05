@@ -11,6 +11,11 @@ on:
         required: true
         type: string
 
+# Глобальные права для всего workflow
+permissions:
+  contents: write
+  actions: read
+
 env:
   PYTHON_VERSION: '3.11'
   HF_REPO: 'Politrees/PolGen'
@@ -21,6 +26,8 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   prepare:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.get_version.outputs.version }}
       version_tag: ${{ steps.get_version.outputs.version_tag }}
@@ -32,6 +39,8 @@ jobs:
         with:
           ref: PolGen
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Get and validate version
         id: get_version
@@ -79,16 +88,17 @@ jobs:
           sed -i -E "s|/Linux/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_Linux\.zip|/Linux/PolGen-${VERSION}_Linux.zip|g" README.md
           sed -i -E "s|/MacOS/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_MacOS\.zip|/MacOS/PolGen-${VERSION}_MacOS.zip|g" README.md
 
-      - name: Commit version changes
+      - name: Commit and push version changes
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION README.md
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "✅ No changes to commit"
           else
             git commit -m "chore: bump version to ${{ steps.get_version.outputs.version }}"
             git push origin HEAD:PolGen
+            echo "✅ Changes pushed successfully"
           fi
 
   # ═══════════════════════════════════════════════════════════════
@@ -415,6 +425,8 @@ jobs:
   create-github-release:
     needs: [prepare, upload-to-huggingface]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
       VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
