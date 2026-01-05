@@ -125,9 +125,8 @@ jobs:
           conda activate ./env
           pip install uv
           uv pip install --upgrade setuptools
-          uv pip install -r requirements.txt \
-            --extra-index-url https://download.pytorch.org/whl/cu128 \
-            --index-strategy unsafe-best-match
+          uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu128
+          uv pip install -r requirements.txt
 
       - name: Download FFmpeg
         shell: powershell
@@ -213,7 +212,7 @@ jobs:
           conda activate ./env
           pip install uv
           uv pip install --upgrade setuptools
-          uv pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu128
+          uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu128
           uv pip install -r requirements.txt
 
       - name: Update VERSION file
@@ -277,7 +276,7 @@ jobs:
           conda activate ./env
           pip install uv
           uv pip install --upgrade setuptools
-          uv pip install torch torchaudio torchvision
+          uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1
           uv pip install -r requirements.txt
 
       - name: Install FFmpeg via Homebrew
