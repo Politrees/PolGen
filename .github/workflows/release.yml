@@ -25,6 +25,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     outputs:
@@ -53,8 +54,7 @@ jobs:
           VERSION="${VERSION#v}"
           
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "❌ Invalid version format: $VERSION"
-            echo "Expected format: X.Y.Z or X.Y.Z-prerelease (e.g., 1.4.0, 1.4.0-beta.1)"
+            echo "Invalid version format: $VERSION"
             exit 1
           fi
           
@@ -68,9 +68,9 @@ jobs:
           echo "version_tag=v$VERSION" >> $GITHUB_OUTPUT
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
           
-          echo "📦 Version: $VERSION"
-          echo "🏷️ Tag: v$VERSION"
-          echo "🚧 Pre-release: $IS_PRERELEASE"
+          echo "Version: $VERSION"
+          echo "Tag: v$VERSION"
+          echo "Pre-release: $IS_PRERELEASE"
 
       - name: Update VERSION file
         run: echo "${{ steps.get_version.outputs.version }}" > VERSION
@@ -88,19 +88,20 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION README.md
           if git diff --staged --quiet; then
-            echo "✅ No changes to commit"
+            echo "No changes to commit"
           else
             git commit -m "chore: bump version to ${{ steps.get_version.outputs.version }}"
             git push origin HEAD:PolGen
-            echo "✅ Changes pushed successfully"
+            echo "Changes pushed"
           fi
 
   # ═══════════════════════════════════════════════════════════════
-  # Сборка для Windows
+  # Сборка для Windows + загрузка в HuggingFace
   # ═══════════════════════════════════════════════════════════════
   build-windows:
     needs: prepare
     runs-on: windows-latest
+    timeout-minutes: 90
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
 
@@ -156,25 +157,15 @@ jobs:
       - name: Cleanup before archive
         shell: bash -el {0}
         run: |
-          echo "Cleanup (100% safe)..."
-          echo "Size BEFORE cleanup:"
-          du -sh env || true
-          
-          # Python bytecode cache
+          echo "Cleanup..."
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find env -type f -name "*.pyc" -delete 2>/dev/null || true
-          
-          # Package tests
           find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
           rm -rf env/Lib/site-packages/torch/test 2>/dev/null || true
-          
-          # Docs and examples
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
-          find env -type d -name "benchmarks" -exec rm -rf {} + 2>/dev/null || true
-          
-          echo "Size AFTER cleanup:"
+          echo "Size after cleanup:"
           du -sh env || true
 
       - name: Create release archive
@@ -203,31 +194,63 @@ jobs:
           $sizeGB = [math]::Round((Get-Item $archiveName).Length / 1GB, 2)
           Write-Host "Created: $archiveName ($sizeGB GB)"
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Setup Python for upload
+        uses: actions/setup-python@v5
         with:
-          name: build-windows
-          path: PolGen-${{ env.VERSION }}_Win.zip
-          retention-days: 1
-          compression-level: 0
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Upload to HuggingFace
+        shell: bash
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface-hub
+          python << 'EOF'
+          import os
+          from huggingface_hub import HfApi
+          
+          api = HfApi()
+          version = os.environ["VERSION"]
+          repo_id = os.environ["HF_REPO"]
+          token = os.environ["HF_TOKEN"]
+          
+          filename = f"PolGen-{version}_Win.zip"
+          
+          if os.path.exists(filename):
+              size_gb = os.path.getsize(filename) / (1024 ** 3)
+              print(f"Uploading {filename} ({size_gb:.2f} GB) to HuggingFace...")
+              
+              api.upload_file(
+                  path_or_fileobj=filename,
+                  path_in_repo=f"Win/{filename}",
+                  repo_id=repo_id,
+                  repo_type="model",
+                  token=token,
+                  commit_message=f"Upload PolGen v{version} for Windows"
+              )
+              print("Upload complete!")
+          else:
+              print(f"File not found: {filename}")
+              exit(1)
+          EOF
 
   # ═══════════════════════════════════════════════════════════════
-  # Сборка для Linux
+  # Сборка для Linux + загрузка в HuggingFace
   # ═══════════════════════════════════════════════════════════════
   build-linux:
     needs: prepare
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
 
     steps:
       - name: Free disk space
         run: |
-          echo "🧹 Освобождение места на диске..."
+          echo "Freeing disk space..."
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
           sudo apt-get clean
-          echo "📊 Свободное место:"
           df -h /
 
       - name: Checkout code
@@ -245,65 +268,53 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
-          echo "🐍 Создание Python окружения..."
+          echo "Creating Python environment..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
           
-          echo "📦 Установка зависимостей..."
+          echo "Installing dependencies..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 \
             --index-url https://download.pytorch.org/whl/cu128
           uv pip install -r requirements.txt
           
-          echo "✅ Зависимости установлены"
+          echo "Dependencies installed"
 
       - name: Download FFmpeg
         run: |
-          echo "📥 Скачивание FFmpeg..."
+          echo "Downloading FFmpeg..."
           wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
           tar -xf ffmpeg-release-amd64-static.tar.xz
           cp ffmpeg-*-amd64-static/ffmpeg ffmpeg-*-amd64-static/ffprobe .
           chmod +x ffmpeg ffprobe
           rm -rf ffmpeg-*-amd64-static*
-          echo "✅ FFmpeg скачан"
+          echo "FFmpeg downloaded"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
-          echo "📥 Скачивание моделей RVC..."
+          echo "Downloading RVC models..."
           conda activate ./env
           python -m assets.model_installer
-          echo "✅ Модели скачаны"
+          echo "Models downloaded"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
       - name: Cleanup before archive
         run: |
-          echo "🧹 Очистка..."
-          echo "📊 Размер ДО очистки:"
-          du -sh env
-          
-          # Кеш установщиков
+          echo "Cleanup..."
           rm -rf ~/.cache/uv ~/.cache/pip 2>/dev/null || true
-          
-          # Python bytecode cache (пересоздаётся автоматически)
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find env -type f -name "*.pyc" -delete 2>/dev/null || true
           find env -type f -name "*.pyo" -delete 2>/dev/null || true
-          
-          # Тесты пакетов (не используются в runtime)
           find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
           rm -rf env/lib/python*/site-packages/torch/test 2>/dev/null || true
-          
-          # Документация и примеры
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
-          find env -type d -name "benchmarks" -exec rm -rf {} + 2>/dev/null || true
-          
-          echo "📊 Размер ПОСЛЕ очистки:"
+          echo "Size after cleanup:"
           du -sh env
 
       - name: Create release archive
@@ -311,7 +322,7 @@ jobs:
           ARCHIVE_NAME="PolGen-${{ env.VERSION }}_Linux.zip"
           TEMP_DIR="PolGen-${{ env.VERSION }}_Linux"
           
-          echo "📦 Создание архива..."
+          echo "Creating archive..."
           
           mkdir -p "$TEMP_DIR"
           rsync -a . "$TEMP_DIR" \
@@ -328,22 +339,49 @@ jobs:
           rm -rf "$TEMP_DIR"
           
           SIZE_GB=$(echo "scale=2; $(stat --printf="%s" "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
-          echo "✅ Создан: $ARCHIVE_NAME ($SIZE_GB GB)"
+          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-linux
-          path: PolGen-${{ env.VERSION }}_Linux.zip
-          retention-days: 1
-          compression-level: 0
+      - name: Upload to HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface-hub
+          python << 'EOF'
+          import os
+          from huggingface_hub import HfApi
+          
+          api = HfApi()
+          version = os.environ["VERSION"]
+          repo_id = os.environ["HF_REPO"]
+          token = os.environ["HF_TOKEN"]
+          
+          filename = f"PolGen-{version}_Linux.zip"
+          
+          if os.path.exists(filename):
+              size_gb = os.path.getsize(filename) / (1024 ** 3)
+              print(f"Uploading {filename} ({size_gb:.2f} GB) to HuggingFace...")
+              
+              api.upload_file(
+                  path_or_fileobj=filename,
+                  path_in_repo=f"Linux/{filename}",
+                  repo_id=repo_id,
+                  repo_type="model",
+                  token=token,
+                  commit_message=f"Upload PolGen v{version} for Linux"
+              )
+              print("Upload complete!")
+          else:
+              print(f"File not found: {filename}")
+              exit(1)
+          EOF
 
   # ═══════════════════════════════════════════════════════════════
-  # Сборка для MacOS
+  # Сборка для MacOS + загрузка в HuggingFace
   # ═══════════════════════════════════════════════════════════════
   build-macos:
     needs: prepare
     runs-on: macos-latest
+    timeout-minutes: 90
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
 
@@ -363,59 +401,48 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
-          echo "🐍 Создание Python окружения..."
+          echo "Creating Python environment..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
           
-          echo "📦 Установка зависимостей..."
+          echo "Installing dependencies..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1
           uv pip install -r requirements.txt
           
-          echo "✅ Зависимости установлены"
+          echo "Dependencies installed"
 
       - name: Install FFmpeg
         run: |
-          echo "📥 Установка FFmpeg..."
+          echo "Installing FFmpeg..."
           brew install ffmpeg
           cp $(which ffmpeg) ./ffmpeg
           cp $(which ffprobe) ./ffprobe
-          echo "✅ FFmpeg установлен"
+          echo "FFmpeg installed"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
-          echo "📥 Скачивание моделей RVC..."
+          echo "Downloading RVC models..."
           conda activate ./env
           python -m assets.model_installer
-          echo "✅ Модели скачаны"
+          echo "Models downloaded"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
       - name: Cleanup before archive
         run: |
-          echo "🧹 Очистка..."
-          echo "📊 Размер ДО очистки:"
-          du -sh env
-          
-          # Python bytecode cache (пересоздаётся автоматически)
+          echo "Cleanup..."
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find env -type f -name "*.pyc" -delete 2>/dev/null || true
-          find env -type f -name "*.pyo" -delete 2>/dev/null || true
-          
-          # Тесты пакетов (не используются в runtime)
           find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
           rm -rf env/lib/python*/site-packages/torch/test 2>/dev/null || true
-          
-          # Документация и примеры
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
-          find env -type d -name "benchmarks" -exec rm -rf {} + 2>/dev/null || true
-          
-          echo "📊 Размер ПОСЛЕ очистки:"
+          echo "Size after cleanup:"
           du -sh env
 
       - name: Create release archive
@@ -423,7 +450,7 @@ jobs:
           ARCHIVE_NAME="PolGen-${{ env.VERSION }}_MacOS.zip"
           TEMP_DIR="PolGen-${{ env.VERSION }}_MacOS"
           
-          echo "📦 Создание архива..."
+          echo "Creating archive..."
           
           mkdir -p "$TEMP_DIR"
           rsync -a . "$TEMP_DIR" \
@@ -440,50 +467,13 @@ jobs:
           rm -rf "$TEMP_DIR"
           
           SIZE_GB=$(echo "scale=2; $(stat -f%z "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
-          echo "✅ Создан: $ARCHIVE_NAME ($SIZE_GB GB)"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-macos
-          path: PolGen-${{ env.VERSION }}_MacOS.zip
-          retention-days: 1
-          compression-level: 0
-
-  # ═══════════════════════════════════════════════════════════════
-  # Загрузка в HuggingFace
-  # ═══════════════════════════════════════════════════════════════
-  upload-to-huggingface:
-    needs: [prepare, build-windows, build-linux, build-macos]
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    env:
-      VERSION: ${{ needs.prepare.outputs.version }}
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-          merge-multiple: true
-
-      - name: List artifacts
-        run: |
-          echo "📁 Скачанные артефакты:"
-          ls -lh ./artifacts/
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install huggingface-hub
-        run: pip install huggingface-hub
+          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
 
       - name: Upload to HuggingFace
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          pip install huggingface-hub
           python << 'EOF'
           import os
           from huggingface_hub import HfApi
@@ -493,66 +483,23 @@ jobs:
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
           
-          platforms = {
-              "Win": "Win",
-              "Linux": "Linux", 
-              "MacOS": "MacOS"
-          }
+          filename = f"PolGen-{version}_MacOS.zip"
           
-          print(f"🚀 Загрузка PolGen v{version} в HuggingFace...")
-          print(f"📦 Репозиторий: {repo_id}\n")
-          
-          uploaded = []
-          failed = []
-          
-          for suffix, folder in platforms.items():
-              filename = f"PolGen-{version}_{suffix}.zip"
-              local_path = f"./artifacts/{filename}"
-              repo_path = f"{folder}/{filename}"
+          if os.path.exists(filename):
+              size_gb = os.path.getsize(filename) / (1024 ** 3)
+              print(f"Uploading {filename} ({size_gb:.2f} GB) to HuggingFace...")
               
-              if os.path.exists(local_path):
-                  size_gb = os.path.getsize(local_path) / (1024 ** 3)
-                  print(f"📤 Загрузка {filename} ({size_gb:.2f} GB)...")
-                  print(f"   📂 В папку: {folder}/")
-                  
-                  try:
-                      api.upload_file(
-                          path_or_fileobj=local_path,
-                          path_in_repo=repo_path,
-                          repo_id=repo_id,
-                          repo_type="model",
-                          token=token,
-                          commit_message=f"Upload PolGen v{version} for {suffix}"
-                      )
-                      uploaded.append(suffix)
-                      print(f"   ✅ Успешно!\n")
-                  except Exception as e:
-                      failed.append((suffix, str(e)))
-                      print(f"   ❌ Ошибка: {e}\n")
-              else:
-                  failed.append((suffix, "Файл не найден"))
-                  print(f"⚠️ Файл не найден: {local_path}\n")
-          
-          print("=" * 50)
-          print(f"📊 Итоги загрузки v{version}")
-          print("=" * 50)
-          
-          if uploaded:
-              print(f"✅ Успешно загружено: {', '.join(uploaded)}")
-          
-          if failed:
-              print(f"❌ Ошибки: {', '.join([f[0] for f in failed])}")
-              for platform, error in failed:
-                  print(f"   - {platform}: {error}")
-          
-          print(f"\n🔗 Репозиторий: https://huggingface.co/{repo_id}")
-          print(f"\n📥 Ссылки на скачивание:")
-          for suffix, folder in platforms.items():
-              if suffix in uploaded:
-                  print(f"   {suffix}: https://huggingface.co/{repo_id}/resolve/main/{folder}/PolGen-{version}_{suffix}.zip?download=true")
-          
-          if not uploaded:
-              print("\n❌ Ничего не загружено!")
+              api.upload_file(
+                  path_or_fileobj=filename,
+                  path_in_repo=f"MacOS/{filename}",
+                  repo_id=repo_id,
+                  repo_type="model",
+                  token=token,
+                  commit_message=f"Upload PolGen v{version} for MacOS"
+              )
+              print("Upload complete!")
+          else:
+              print(f"File not found: {filename}")
               exit(1)
           EOF
 
@@ -560,8 +507,9 @@ jobs:
   # Создание GitHub Release
   # ═══════════════════════════════════════════════════════════════
   create-github-release:
-    needs: [prepare, upload-to-huggingface]
+    needs: [prepare, build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     env:
