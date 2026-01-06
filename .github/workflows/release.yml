@@ -792,10 +792,10 @@ jobs:
           | Платформа | GPU | RAM | Диск |
           |-----------|-----|-----|------|
           | Windows (CUDA) | NVIDIA | 8+ GB | ~10 GB |
-          | Windows (CPU) | Любой / без GPU | 16+ GB | ~3 GB |
-          | Linux (CUDA) | NVIDIA | 8+ GB | ~12 GB |
-          | Linux (CPU) | Любой / без GPU | 16+ GB | ~3 GB |
-          | MacOS | Apple Silicon / Intel | 8+ GB | ~5 GB |
+          | Windows (CPU) | Любой / без GPU | 16+ GB | ~6 GB |
+          | Linux (CUDA) | NVIDIA | 8+ GB | ~14 GB |
+          | Linux (CPU) | Любой / без GPU | 16+ GB | ~7 GB |
+          | MacOS | Apple Silicon / Intel | 8+ GB | ~6 GB |
           
           ---
           
