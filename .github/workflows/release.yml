@@ -7,9 +7,29 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 1.4.0, 1.4.0-beta.1, 1.4.0-rc.2)'
+        description: 'Version to release (e.g., 1.4.0, 1.4.0-beta.1)'
         required: true
         type: string
+      build_windows:
+        description: 'Build Windows (CUDA)'
+        type: boolean
+        default: true
+      build_windows_cpu:
+        description: 'Build Windows (CPU only)'
+        type: boolean
+        default: false
+      build_linux:
+        description: 'Build Linux (CUDA)'
+        type: boolean
+        default: true
+      build_linux_cpu:
+        description: 'Build Linux (CPU only)'
+        type: boolean
+        default: false
+      build_macos:
+        description: 'Build MacOS'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -32,6 +52,11 @@ jobs:
       version: ${{ steps.get_version.outputs.version }}
       version_tag: ${{ steps.get_version.outputs.version_tag }}
       is_prerelease: ${{ steps.get_version.outputs.is_prerelease }}
+      build_windows: ${{ steps.set_builds.outputs.build_windows }}
+      build_windows_cpu: ${{ steps.set_builds.outputs.build_windows_cpu }}
+      build_linux: ${{ steps.set_builds.outputs.build_linux }}
+      build_linux_cpu: ${{ steps.set_builds.outputs.build_linux_cpu }}
+      build_macos: ${{ steps.set_builds.outputs.build_macos }}
 
     steps:
       - name: Checkout code
@@ -69,8 +94,23 @@ jobs:
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
           
           echo "Version: $VERSION"
-          echo "Tag: v$VERSION"
-          echo "Pre-release: $IS_PRERELEASE"
+
+      - name: Set build targets
+        id: set_builds
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "build_windows=true" >> $GITHUB_OUTPUT
+            echo "build_windows_cpu=true" >> $GITHUB_OUTPUT
+            echo "build_linux=true" >> $GITHUB_OUTPUT
+            echo "build_linux_cpu=true" >> $GITHUB_OUTPUT
+            echo "build_macos=true" >> $GITHUB_OUTPUT
+          else
+            echo "build_windows=${{ github.event.inputs.build_windows }}" >> $GITHUB_OUTPUT
+            echo "build_windows_cpu=${{ github.event.inputs.build_windows_cpu }}" >> $GITHUB_OUTPUT
+            echo "build_linux=${{ github.event.inputs.build_linux }}" >> $GITHUB_OUTPUT
+            echo "build_linux_cpu=${{ github.event.inputs.build_linux_cpu }}" >> $GITHUB_OUTPUT
+            echo "build_macos=${{ github.event.inputs.build_macos }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Update VERSION file
         run: echo "${{ steps.get_version.outputs.version }}" > VERSION
@@ -78,8 +118,8 @@ jobs:
       - name: Update README.md download links
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
-          sed -i -E "s|/Win/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_Win\.zip|/Win/PolGen-${VERSION}_Win.zip|g" README.md
-          sed -i -E "s|/Linux/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_Linux\.zip|/Linux/PolGen-${VERSION}_Linux.zip|g" README.md
+          sed -i -E "s|/Windows/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_Windows_CUDA\.zip|/Windows/PolGen-${VERSION}_Windows_CUDA.zip|g" README.md
+          sed -i -E "s|/Linux/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_Linux_CUDA\.zip|/Linux/PolGen-${VERSION}_Linux_CUDA.zip|g" README.md
           sed -i -E "s|/MacOS/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_MacOS\.zip|/MacOS/PolGen-${VERSION}_MacOS.zip|g" README.md
 
       - name: Commit and push version changes
@@ -92,14 +132,14 @@ jobs:
           else
             git commit -m "chore: bump version to ${{ steps.get_version.outputs.version }}"
             git push origin HEAD:PolGen
-            echo "Changes pushed"
           fi
 
   # ═══════════════════════════════════════════════════════════════
-  # Сборка для Windows + загрузка в HuggingFace
+  # Windows (CUDA)
   # ═══════════════════════════════════════════════════════════════
   build-windows:
     needs: prepare
+    if: needs.prepare.outputs.build_windows == 'true'
     runs-on: windows-latest
     timeout-minutes: 90
     env:
@@ -121,64 +161,49 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
-          echo "Creating Python environment..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
-          
-          echo "Installing dependencies..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 \
             --index-url https://download.pytorch.org/whl/cu128
           uv pip install -r requirements.txt
-          
-          echo "Dependencies installed"
 
       - name: Download FFmpeg
         shell: powershell
         run: |
-          Write-Host "Downloading FFmpeg..."
           $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffmpeg.exe" -OutFile "ffmpeg.exe"
           Invoke-WebRequest -Uri "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffprobe.exe" -OutFile "ffprobe.exe"
-          Write-Host "FFmpeg downloaded"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
-          echo "Downloading RVC models..."
           conda activate ./env
           python -m assets.model_installer
-          echo "Models downloaded"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
-      - name: Cleanup before archive
+      - name: Cleanup
         shell: bash -el {0}
         run: |
-          echo "Cleanup..."
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find env -type f -name "*.pyc" -delete 2>/dev/null || true
           find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
-          rm -rf env/Lib/site-packages/torch/test 2>/dev/null || true
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
-          echo "Size after cleanup:"
-          du -sh env || true
 
-      - name: Create release archive
+      - name: Create archive
         shell: powershell
         run: |
-          $archiveName = "PolGen-${{ env.VERSION }}_Win.zip"
-          $tempDir = "PolGen-${{ env.VERSION }}_Win"
-          
-          Write-Host "Creating archive..."
+          $archiveName = "PolGen-${{ env.VERSION }}_Windows_CUDA.zip"
+          $tempDir = "PolGen-${{ env.VERSION }}_Windows_CUDA"
           
           New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
           
-          $excludeItems = @('.git', '.github', '__pycache__', '.ipynb_checkpoints', '*.pyc', $tempDir)
+          $excludeItems = @('.git', '.github', '__pycache__', '.ipynb_checkpoints', $tempDir)
           Get-ChildItem -Path . | Where-Object { 
             $item = $_.Name
             -not ($excludeItems | Where-Object { $item -like $_ })
@@ -213,32 +238,148 @@ jobs:
           version = os.environ["VERSION"]
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
-          
-          filename = f"PolGen-{version}_Win.zip"
+          filename = f"PolGen-{version}_Windows_CUDA.zip"
           
           if os.path.exists(filename):
               size_gb = os.path.getsize(filename) / (1024 ** 3)
-              print(f"Uploading {filename} ({size_gb:.2f} GB) to HuggingFace...")
-              
+              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
               api.upload_file(
                   path_or_fileobj=filename,
-                  path_in_repo=f"Win/{filename}",
+                  path_in_repo=f"Windows/{filename}",
                   repo_id=repo_id,
                   repo_type="model",
                   token=token,
-                  commit_message=f"Upload PolGen v{version} for Windows"
+                  commit_message=f"Upload PolGen v{version} for Windows (CUDA)"
               )
-              print("Upload complete!")
-          else:
-              print(f"File not found: {filename}")
-              exit(1)
+              print("Done!")
           EOF
 
   # ═══════════════════════════════════════════════════════════════
-  # Сборка для Linux + загрузка в HuggingFace
+  # Windows (CPU)
+  # ═══════════════════════════════════════════════════════════════
+  build-windows-cpu:
+    needs: prepare
+    if: needs.prepare.outputs.build_windows_cpu == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: PolGen
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ env.PYTHON_VERSION }}
+          activate-environment: polgen-env
+
+      - name: Create environment and install dependencies (CPU)
+        shell: bash -el {0}
+        run: |
+          conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
+          conda activate ./env
+          pip install uv
+          uv pip install --upgrade setuptools
+          uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 \
+            --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -r requirements.txt
+
+      - name: Download FFmpeg
+        shell: powershell
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -Uri "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffmpeg.exe" -OutFile "ffmpeg.exe"
+          Invoke-WebRequest -Uri "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg/ffprobe.exe" -OutFile "ffprobe.exe"
+
+      - name: Download RVC models
+        shell: bash -el {0}
+        run: |
+          conda activate ./env
+          python -m assets.model_installer
+
+      - name: Update VERSION file
+        run: echo "${{ env.VERSION }}" > VERSION
+
+      - name: Cleanup
+        shell: bash -el {0}
+        run: |
+          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find env -type f -name "*.pyc" -delete 2>/dev/null || true
+          find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
+
+      - name: Create archive
+        shell: powershell
+        run: |
+          $archiveName = "PolGen-${{ env.VERSION }}_Windows_CPU.zip"
+          $tempDir = "PolGen-${{ env.VERSION }}_Windows_CPU"
+          
+          New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+          
+          $excludeItems = @('.git', '.github', '__pycache__', '.ipynb_checkpoints', $tempDir)
+          Get-ChildItem -Path . | Where-Object { 
+            $item = $_.Name
+            -not ($excludeItems | Where-Object { $item -like $_ })
+          } | Copy-Item -Destination $tempDir -Recurse -Force
+          
+          Get-ChildItem -Path $tempDir -Recurse -Force -Directory | 
+            Where-Object { $_.Name -match '^\.git|^__pycache__|\.ipynb_checkpoints' } | 
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+          
+          Compress-Archive -Path $tempDir -DestinationPath $archiveName -Force
+          Remove-Item -Path $tempDir -Recurse -Force
+          
+          $sizeGB = [math]::Round((Get-Item $archiveName).Length / 1GB, 2)
+          Write-Host "Created: $archiveName ($sizeGB GB)"
+
+      - name: Setup Python for upload
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Upload to HuggingFace
+        shell: bash
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface-hub
+          python << 'EOF'
+          import os
+          from huggingface_hub import HfApi
+          
+          api = HfApi()
+          version = os.environ["VERSION"]
+          repo_id = os.environ["HF_REPO"]
+          token = os.environ["HF_TOKEN"]
+          filename = f"PolGen-{version}_Windows_CPU.zip"
+          
+          if os.path.exists(filename):
+              size_gb = os.path.getsize(filename) / (1024 ** 3)
+              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
+              api.upload_file(
+                  path_or_fileobj=filename,
+                  path_in_repo=f"Windows/{filename}",
+                  repo_id=repo_id,
+                  repo_type="model",
+                  token=token,
+                  commit_message=f"Upload PolGen v{version} for Windows (CPU)"
+              )
+              print("Done!")
+          EOF
+
+  # ═══════════════════════════════════════════════════════════════
+  # Linux (CUDA)
   # ═══════════════════════════════════════════════════════════════
   build-linux:
     needs: prepare
+    if: needs.prepare.outputs.build_linux == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -247,11 +388,9 @@ jobs:
     steps:
       - name: Free disk space
         run: |
-          echo "Freeing disk space..."
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
           sudo apt-get clean
-          df -h /
 
       - name: Checkout code
         uses: actions/checkout@v5
@@ -268,72 +407,51 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
-          echo "Creating Python environment..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
-          
-          echo "Installing dependencies..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 \
             --index-url https://download.pytorch.org/whl/cu128
           uv pip install -r requirements.txt
-          
-          echo "Dependencies installed"
 
       - name: Download FFmpeg
         run: |
-          echo "Downloading FFmpeg..."
           wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
           tar -xf ffmpeg-release-amd64-static.tar.xz
           cp ffmpeg-*-amd64-static/ffmpeg ffmpeg-*-amd64-static/ffprobe .
           chmod +x ffmpeg ffprobe
           rm -rf ffmpeg-*-amd64-static*
-          echo "FFmpeg downloaded"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
-          echo "Downloading RVC models..."
           conda activate ./env
           python -m assets.model_installer
-          echo "Models downloaded"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
-      - name: Cleanup before archive
+      - name: Cleanup
         run: |
-          echo "Cleanup..."
           rm -rf ~/.cache/uv ~/.cache/pip 2>/dev/null || true
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find env -type f -name "*.pyc" -delete 2>/dev/null || true
-          find env -type f -name "*.pyo" -delete 2>/dev/null || true
           find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
-          rm -rf env/lib/python*/site-packages/torch/test 2>/dev/null || true
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
-          echo "Size after cleanup:"
-          du -sh env
 
-      - name: Create release archive
+      - name: Create archive
         run: |
-          ARCHIVE_NAME="PolGen-${{ env.VERSION }}_Linux.zip"
-          TEMP_DIR="PolGen-${{ env.VERSION }}_Linux"
-          
-          echo "Creating archive..."
+          ARCHIVE_NAME="PolGen-${{ env.VERSION }}_Linux_CUDA.zip"
+          TEMP_DIR="PolGen-${{ env.VERSION }}_Linux_CUDA"
           
           mkdir -p "$TEMP_DIR"
           rsync -a . "$TEMP_DIR" \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude '__pycache__' \
-            --exclude '*.pyc' \
-            --exclude '.ipynb_checkpoints' \
-            --exclude "$TEMP_DIR" \
-            --exclude '*.zip' \
-            --exclude '*.tar.xz'
+            --exclude '.git' --exclude '.github' --exclude '__pycache__' \
+            --exclude '*.pyc' --exclude '.ipynb_checkpoints' \
+            --exclude "$TEMP_DIR" --exclude '*.zip' --exclude '*.tar.xz'
           
           zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
           rm -rf "$TEMP_DIR"
@@ -354,32 +472,142 @@ jobs:
           version = os.environ["VERSION"]
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
-          
-          filename = f"PolGen-{version}_Linux.zip"
+          filename = f"PolGen-{version}_Linux_CUDA.zip"
           
           if os.path.exists(filename):
               size_gb = os.path.getsize(filename) / (1024 ** 3)
-              print(f"Uploading {filename} ({size_gb:.2f} GB) to HuggingFace...")
-              
+              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
               api.upload_file(
                   path_or_fileobj=filename,
                   path_in_repo=f"Linux/{filename}",
                   repo_id=repo_id,
                   repo_type="model",
                   token=token,
-                  commit_message=f"Upload PolGen v{version} for Linux"
+                  commit_message=f"Upload PolGen v{version} for Linux (CUDA)"
               )
-              print("Upload complete!")
-          else:
-              print(f"File not found: {filename}")
-              exit(1)
+              print("Done!")
           EOF
 
   # ═══════════════════════════════════════════════════════════════
-  # Сборка для MacOS + загрузка в HuggingFace
+  # Linux (CPU)
+  # ═══════════════════════════════════════════════════════════════
+  build-linux-cpu:
+    needs: prepare
+    if: needs.prepare.outputs.build_linux_cpu == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          sudo apt-get clean
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: PolGen
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ env.PYTHON_VERSION }}
+          activate-environment: polgen-env
+
+      - name: Create environment and install dependencies (CPU)
+        shell: bash -el {0}
+        run: |
+          conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
+          conda activate ./env
+          pip install uv
+          uv pip install --upgrade setuptools
+          uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 \
+            --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -r requirements.txt
+
+      - name: Download FFmpeg
+        run: |
+          wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+          tar -xf ffmpeg-release-amd64-static.tar.xz
+          cp ffmpeg-*-amd64-static/ffmpeg ffmpeg-*-amd64-static/ffprobe .
+          chmod +x ffmpeg ffprobe
+          rm -rf ffmpeg-*-amd64-static*
+
+      - name: Download RVC models
+        shell: bash -el {0}
+        run: |
+          conda activate ./env
+          python -m assets.model_installer
+
+      - name: Update VERSION file
+        run: echo "${{ env.VERSION }}" > VERSION
+
+      - name: Cleanup
+        run: |
+          rm -rf ~/.cache/uv ~/.cache/pip 2>/dev/null || true
+          find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find env -type f -name "*.pyc" -delete 2>/dev/null || true
+          find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
+          find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
+
+      - name: Create archive
+        run: |
+          ARCHIVE_NAME="PolGen-${{ env.VERSION }}_Linux_CPU.zip"
+          TEMP_DIR="PolGen-${{ env.VERSION }}_Linux_CPU"
+          
+          mkdir -p "$TEMP_DIR"
+          rsync -a . "$TEMP_DIR" \
+            --exclude '.git' --exclude '.github' --exclude '__pycache__' \
+            --exclude '*.pyc' --exclude '.ipynb_checkpoints' \
+            --exclude "$TEMP_DIR" --exclude '*.zip' --exclude '*.tar.xz'
+          
+          zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
+          rm -rf "$TEMP_DIR"
+          
+          SIZE_GB=$(echo "scale=2; $(stat --printf="%s" "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
+          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
+
+      - name: Upload to HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface-hub
+          python << 'EOF'
+          import os
+          from huggingface_hub import HfApi
+          
+          api = HfApi()
+          version = os.environ["VERSION"]
+          repo_id = os.environ["HF_REPO"]
+          token = os.environ["HF_TOKEN"]
+          filename = f"PolGen-{version}_Linux_CPU.zip"
+          
+          if os.path.exists(filename):
+              size_gb = os.path.getsize(filename) / (1024 ** 3)
+              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
+              api.upload_file(
+                  path_or_fileobj=filename,
+                  path_in_repo=f"Linux/{filename}",
+                  repo_id=repo_id,
+                  repo_type="model",
+                  token=token,
+                  commit_message=f"Upload PolGen v{version} for Linux (CPU)"
+              )
+              print("Done!")
+          EOF
+
+  # ═══════════════════════════════════════════════════════════════
+  # MacOS (MPS/CPU)
   # ═══════════════════════════════════════════════════════════════
   build-macos:
     needs: prepare
+    if: needs.prepare.outputs.build_macos == 'true'
     runs-on: macos-latest
     timeout-minutes: 90
     env:
@@ -401,67 +629,47 @@ jobs:
       - name: Create environment and install dependencies
         shell: bash -el {0}
         run: |
-          echo "Creating Python environment..."
           conda create -y -p ./env python=${{ env.PYTHON_VERSION }}
           conda activate ./env
-          
-          echo "Installing dependencies..."
           pip install uv
           uv pip install --upgrade setuptools
           uv pip install torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1
           uv pip install -r requirements.txt
-          
-          echo "Dependencies installed"
 
       - name: Install FFmpeg
         run: |
-          echo "Installing FFmpeg..."
           brew install ffmpeg
           cp $(which ffmpeg) ./ffmpeg
           cp $(which ffprobe) ./ffprobe
-          echo "FFmpeg installed"
 
       - name: Download RVC models
         shell: bash -el {0}
         run: |
-          echo "Downloading RVC models..."
           conda activate ./env
           python -m assets.model_installer
-          echo "Models downloaded"
 
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
-      - name: Cleanup before archive
+      - name: Cleanup
         run: |
-          echo "Cleanup..."
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find env -type f -name "*.pyc" -delete 2>/dev/null || true
           find env -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
-          rm -rf env/lib/python*/site-packages/torch/test 2>/dev/null || true
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
-          echo "Size after cleanup:"
-          du -sh env
 
-      - name: Create release archive
+      - name: Create archive
         run: |
           ARCHIVE_NAME="PolGen-${{ env.VERSION }}_MacOS.zip"
           TEMP_DIR="PolGen-${{ env.VERSION }}_MacOS"
           
-          echo "Creating archive..."
-          
           mkdir -p "$TEMP_DIR"
           rsync -a . "$TEMP_DIR" \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude '__pycache__' \
-            --exclude '*.pyc' \
-            --exclude '.ipynb_checkpoints' \
-            --exclude '.DS_Store' \
-            --exclude "$TEMP_DIR" \
-            --exclude '*.zip'
+            --exclude '.git' --exclude '.github' --exclude '__pycache__' \
+            --exclude '*.pyc' --exclude '.ipynb_checkpoints' --exclude '.DS_Store' \
+            --exclude "$TEMP_DIR" --exclude '*.zip'
           
           zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
           rm -rf "$TEMP_DIR"
@@ -482,13 +690,11 @@ jobs:
           version = os.environ["VERSION"]
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
-          
           filename = f"PolGen-{version}_MacOS.zip"
           
           if os.path.exists(filename):
               size_gb = os.path.getsize(filename) / (1024 ** 3)
-              print(f"Uploading {filename} ({size_gb:.2f} GB) to HuggingFace...")
-              
+              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
               api.upload_file(
                   path_or_fileobj=filename,
                   path_in_repo=f"MacOS/{filename}",
@@ -497,17 +703,15 @@ jobs:
                   token=token,
                   commit_message=f"Upload PolGen v{version} for MacOS"
               )
-              print("Upload complete!")
-          else:
-              print(f"File not found: {filename}")
-              exit(1)
+              print("Done!")
           EOF
 
   # ═══════════════════════════════════════════════════════════════
   # Создание GitHub Release
   # ═══════════════════════════════════════════════════════════════
   create-github-release:
-    needs: [prepare, build-windows, build-linux, build-macos]
+    needs: [prepare, build-windows, build-windows-cpu, build-linux, build-linux-cpu, build-macos]
+    if: always() && needs.prepare.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -545,11 +749,22 @@ jobs:
           
           ### 📥 Скачать
           
-          | Платформа | Ссылка | Требования |
-          |-----------|--------|------------|
-          | **Windows** | [📦 PolGen-${VERSION}_Win.zip](https://huggingface.co/${HF_REPO}/resolve/main/Win/PolGen-${VERSION}_Win.zip?download=true) | Windows 10/11, NVIDIA GPU |
-          | **Linux** | [📦 PolGen-${VERSION}_Linux.zip](https://huggingface.co/${HF_REPO}/resolve/main/Linux/PolGen-${VERSION}_Linux.zip?download=true) | Ubuntu 20.04+, NVIDIA GPU |
-          | **MacOS** | [📦 PolGen-${VERSION}_MacOS.zip](https://huggingface.co/${HF_REPO}/resolve/main/MacOS/PolGen-${VERSION}_MacOS.zip?download=true) | macOS 12+, Apple Silicon/Intel |
+          #### 🖥️ Windows
+          | Версия | Ссылка | Описание |
+          |--------|--------|----------|
+          | **CUDA** | [📦 PolGen-${VERSION}_Windows_CUDA.zip](https://huggingface.co/${HF_REPO}/resolve/main/Windows/PolGen-${VERSION}_Windows_CUDA.zip?download=true) | Для NVIDIA GPU (рекомендуется) |
+          | **CPU** | [📦 PolGen-${VERSION}_Windows_CPU.zip](https://huggingface.co/${HF_REPO}/resolve/main/Windows/PolGen-${VERSION}_Windows_CPU.zip?download=true) | Для AMD GPU / без GPU |
+          
+          #### 🐧 Linux
+          | Версия | Ссылка | Описание |
+          |--------|--------|----------|
+          | **CUDA** | [📦 PolGen-${VERSION}_Linux_CUDA.zip](https://huggingface.co/${HF_REPO}/resolve/main/Linux/PolGen-${VERSION}_Linux_CUDA.zip?download=true) | Для NVIDIA GPU (рекомендуется) |
+          | **CPU** | [📦 PolGen-${VERSION}_Linux_CPU.zip](https://huggingface.co/${HF_REPO}/resolve/main/Linux/PolGen-${VERSION}_Linux_CPU.zip?download=true) | Для AMD GPU / без GPU |
+          
+          #### 🍎 MacOS
+          | Версия | Ссылка | Описание |
+          |--------|--------|----------|
+          | **MPS/CPU** | [📦 PolGen-${VERSION}_MacOS.zip](https://huggingface.co/${HF_REPO}/resolve/main/MacOS/PolGen-${VERSION}_MacOS.zip?download=true) | Apple Silicon (MPS) / Intel |
           
           ---
           
@@ -558,14 +773,14 @@ jobs:
           - ✅ Python окружение с зависимостями
           - ✅ FFmpeg / FFprobe
           - ✅ Модели RVC (rmvpe.pt, hubert_base.pt)
-          - ✅ Модели FlashSR (sr_vocoder, student_ldm, vae)
+          - ✅ Модели FlashSR
           
           ---
           
           ### 🚀 Быстрый старт
           
-          1. Скачайте архив для вашей ОС по ссылке выше
-          2. Распакуйте в любое удобное место
+          1. Скачайте архив для вашей ОС
+          2. Распакуйте в любое место
           3. Запустите:
              - **Windows**: \`run-PolGen.bat\`
              - **Linux/MacOS**: \`chmod +x run-PolGen.sh && ./run-PolGen.sh\`
@@ -576,9 +791,11 @@ jobs:
           
           | Платформа | GPU | RAM | Диск |
           |-----------|-----|-----|------|
-          | Windows | NVIDIA (CUDA 12.8) | 8+ GB | ~8 GB |
-          | Linux | NVIDIA (CUDA 12.8) | 8+ GB | ~12 GB |
-          | MacOS | Apple Silicon (MPS) / Intel | 8+ GB | ~5 GB |
+          | Windows (CUDA) | NVIDIA | 8+ GB | ~10 GB |
+          | Windows (CPU) | Любой / без GPU | 16+ GB | ~3 GB |
+          | Linux (CUDA) | NVIDIA | 8+ GB | ~12 GB |
+          | Linux (CPU) | Любой / без GPU | 16+ GB | ~3 GB |
+          | MacOS | Apple Silicon / Intel | 8+ GB | ~5 GB |
           
           ---
           
