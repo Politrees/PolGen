@@ -45,7 +45,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --no-cache-dir uv
-        uv pip install --no-cache-dir torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu128 -q --system
+        uv pip install --no-cache-dir torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu128 -q --system
         uv pip install --no-cache-dir -r requirements.txt -q --system
 
     - name: Install RVC models
@@ -95,7 +95,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --no-cache-dir uv
-        uv pip install --no-cache-dir torch==2.7.1 torchaudio==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu128 -q --system
+        uv pip install --no-cache-dir torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu128 -q --system
         uv pip install --no-cache-dir -r requirements.txt -q --system
 
     - name: Install RVC models
