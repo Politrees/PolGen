@@ -5,8 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from FlashSR.FlashSR import FlashSR
-from TorchJaekwon.Util.UtilAudio import UtilAudio
 from tqdm import tqdm
 
 FLASH_SR_DIR = os.path.join(os.getcwd(), "rvc", "models", "FlashSR")
@@ -25,10 +23,12 @@ def _getWindowingArray(window_size, fade_size):
 
 
 def process_audio(input_path, output_path, overlap, flashsr, device):
+    from TorchJaekwon.Util.UtilAudio import UtilAudio
+
     audio, _ = UtilAudio.read(input_path, sample_rate=48000)
     audio = audio.to(device)
 
-    C = 245760  # chunk_size
+    C = 245760
     N = overlap
     step = C // N
     fade_size = C // 10
@@ -85,6 +85,12 @@ def process_audio(input_path, output_path, overlap, flashsr, device):
 
 
 def upscale(input, output, overlap, device):
+    # Загружаем модели FlashSR при первом использовании
+    from assets.model_installer import check_and_install_models
+    check_and_install_models(include_flashsr=True)
+
+    from FlashSR.FlashSR import FlashSR
+
     flashsr = FlashSR(student_ldm_ckpt_path, sr_vocoder_ckpt_path, vae_ckpt_path, device)
     flashsr = flashsr.to(device)
 

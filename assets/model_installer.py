@@ -25,9 +25,7 @@ def dl_model(link, model_name, dir_name):
     r = requests.get(f"{link}{model_name}", stream=True)
     r.raise_for_status()
 
-    # Получаем общий размер файла
     total_size = int(r.headers.get("content-length", 0))
-    # Используем tqdm для отображения прогресса
     with (
         open(file_path, "wb") as f,
         tqdm(
@@ -43,24 +41,20 @@ def dl_model(link, model_name, dir_name):
             pbar.update(len(chunk))
 
 
-def check_and_install_models():
+def check_and_install_models(include_flashsr=False):
     try:
-        predictors_names = ["rmvpe.pt"]
-        for model in predictors_names:
+        for model in ["rmvpe.pt"]:
             dl_model(PREDICTORS, model, PREDICTORS_DIR)
 
-        embedder_names = ["hubert_base.pt"]
-        for model in embedder_names:
+        for model in ["hubert_base.pt"]:
             dl_model(EMBEDDERS, model, EMBEDDERS_DIR)
 
-        flash_sr_names = ["sr_vocoder.pth", "student_ldm.pth", "vae.pth"]
-        for model in flash_sr_names:
-            dl_model(FLASH_SR, model, FLASH_SR_DIR)
+        if include_flashsr:
+            for model in ["sr_vocoder.pth", "student_ldm.pth", "vae.pth"]:
+                dl_model(FLASH_SR, model, FLASH_SR_DIR)
 
-    except requests.exceptions.RequestException as e:
-        print(f"Произошла ошибка при загрузке модели: {e}")
     except Exception as e:
-        print(f"Произошла непредвиденная ошибка: {e}")
+        print(f"Ошибка при загрузке модели: {e}")
 
 
 if __name__ == "__main__":
