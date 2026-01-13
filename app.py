@@ -57,14 +57,14 @@ with gr.Blocks(
     with gr.Tab("Велком/Контакты"):
         welcome_tab()
 
-    with gr.Tab("Преобразование голоса (RVC)"):
+    with gr.Tab("RVC | Преобразование голоса"):
         inference_tab()
 
     if not is_offline_mode():
-        with gr.Tab("Преобразование текста в речь (TTS)"):
+        with gr.Tab("TTS | Преобразование текста в речь"):
             edge_tts_tab()
 
-    with gr.Tab("PolUVR (UVR)"):
+    with gr.Tab("UVR | PolUVR"):
         if is_offline_mode():
             gr.HTML(
                 "<center><h3>PolUVR не будет функционировать без подключения к интернету, если вы ранее не установили необходимые модели.</h3></center>",
