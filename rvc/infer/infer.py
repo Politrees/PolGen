@@ -104,8 +104,8 @@ def rvc_infer(
     f0_max=1100,
     rvc_pitch=0,
     protect=0.5,
-    index_rate=0,
-    volume_envelope=1,
+    index_rate=0.25,
+    volume_envelope=1.0,
     autopitch=False,
     autopitch_threshold=155.0,
     autotune=False,
@@ -136,9 +136,9 @@ def rvc_infer(
 
     # Построение имени выходного файла
     base_name = os.path.splitext(os.path.basename(input_path))[0]
-    if len(base_name) > 50:
-        gr.Warning("Имя файла превышает 50 символов и будет сокращено для удобства.")
-        base_name = "Made_in_PolGen"  # Сменить имя файла, если длина исходного более 50 символов
+    if len(base_name) > 100:  # Сменить имя выходного файла, если длина исходного более 100 символов
+        gr.Warning("Имя файла превышает 100 символов и будет сокращено для удобства.")
+        base_name = f"{base_name[:25]}... (Made_in_PolGen)"
     output_path = os.path.join(OUTPUT_DIR, f"{base_name}_({rvc_model}).{output_format}")
 
     # Загружаем аудиофайл
@@ -195,8 +195,8 @@ def rvc_edgetts_infer(
     f0_max=1100,
     rvc_pitch=0,
     protect=0.5,
-    index_rate=0,
-    volume_envelope=1,
+    index_rate=0.25,
+    volume_envelope=1.0,
     autopitch=False,
     autopitch_threshold=155.0,
     autotune=False,
