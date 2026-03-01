@@ -93,7 +93,7 @@ def launch_gradio(server_name: str, server_port: int) -> None:
     PolGen.launch(
         favicon_path="assets/logo.ico",
         inbrowser=not RUN_FROM_JUPYTER_NOTEBOOKS,
-        share=RUN_FROM_JUPYTER_NOTEBOOKS,
+        share=RUN_FROM_JUPYTER_NOTEBOOKS and ("--no-share" not in sys.argv),
         quiet=RUN_FROM_JUPYTER_NOTEBOOKS,
         server_name=server_name,
         server_port=server_port,
