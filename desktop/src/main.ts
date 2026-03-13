@@ -522,66 +522,52 @@ async function _pathToBlob(path: string): Promise<{ blob: Blob; filename: string
 
 async function installModelZip() {
   if (!state.backendUrl) return;
-  if (!state.installZip.zip_path.trim()) { appendLog("[UI] ZIP путь пустой."); return; }
-  if (!state.installZip.model_name.trim()) { appendLog("[UI] model_name пустой."); return; }
-
+  if (!state.installZip.zip_path.trim()) return;
+  
   beginNewAction();
-  appendLog("[UI] Загрузка ZIP в backend…");
+  appendLog("[UI] Передача пути ZIP в бэкенд...");
 
-  const { blob, filename } = await _pathToBlob(state.installZip.zip_path);
-  const form = new FormData();
-  form.append("zip_file", blob, filename);
-  form.append("model_name", state.installZip.model_name);
-
-  const r = await fetch(`${state.backendUrl}/jobs/models/install_zip`, { method: "POST", body: form });
-  if (!r.ok) {
-    const txt = await r.text().catch(() => "");
-    appendLog(`[UI] install_zip error: ${r.status} ${txt}`);
-    setJob({ job_id: "-", status: "error", progress: 0, message: "Ошибка", error: txt });
-    return;
-  }
-
-  const data = (await r.json()) as BackendJobStarted;
-  state.jobId = data.job_id;
-  setJob({ job_id: data.job_id, status: "queued", progress: 0, message: "queued" });
-  attachSSE(data.job_id);
-  await pollJobUntilDone(data.job_id);
-  await loadModels();
-  renderLeft();
+  const r = await fetch(`${state.backendUrl}/jobs/models/install_local_zip`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      path: state.installZip.zip_path,
+      model_name: state.installZip.model_name
+    })
+  });
+  
+  processInstallResponse(r);
 }
 
 async function installModelFiles() {
   if (!state.backendUrl) return;
-  if (!state.installFiles.pth_path.trim()) { appendLog("[UI] pth путь пустой."); return; }
-  if (!state.installFiles.model_name.trim()) { appendLog("[UI] model_name пустой."); return; }
+  if (!state.installFiles.pth_path.trim()) return;
 
   beginNewAction();
-  appendLog("[UI] Загрузка файлов модели в backend…");
+  appendLog("[UI] Передача путей файлов в бэкенд...");
 
-  const form = new FormData();
-  {
-    const { blob, filename } = await _pathToBlob(state.installFiles.pth_path);
-    form.append("pth_file", blob, filename);
-  }
+  const r = await fetch(`${state.backendUrl}/jobs/models/install_local_files`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      path: state.installFiles.pth_path,
+      extra_path: state.installFiles.index_path,
+      model_name: state.installFiles.model_name
+    })
+  });
 
-  if (state.installFiles.index_path.trim()) {
-    const { blob, filename } = await _pathToBlob(state.installFiles.index_path);
-    form.append("index_file", blob, filename);
-  }
+  processInstallResponse(r);
+}
 
-  form.append("model_name", state.installFiles.model_name);
-
-  const r = await fetch(`${state.backendUrl}/jobs/models/install_files`, { method: "POST", body: form });
+async function processInstallResponse(r: Response) {
   if (!r.ok) {
-    const txt = await r.text().catch(() => "");
-    appendLog(`[UI] install_files error: ${r.status} ${txt}`);
+    const txt = await r.text();
     setJob({ job_id: "-", status: "error", progress: 0, message: "Ошибка", error: txt });
     return;
   }
-
-  const data = (await r.json()) as BackendJobStarted;
+  const data = await r.json();
   state.jobId = data.job_id;
-  setJob({ job_id: data.job_id, status: "queued", progress: 0, message: "queued" });
+  setJob({ job_id: data.job_id, status: "queued", progress: 0, message: "Ожидание..." });
   attachSSE(data.job_id);
   await pollJobUntilDone(data.job_id);
   await loadModels();
@@ -650,7 +636,7 @@ function mount() {
   brand.appendChild(el("div", "logo"));
   const title = el("div", "title");
   title.appendChild(el("b", "", "PolGen Desktop"));
-  title.appendChild(el("span", "", "Model Manager + RVC"));
+  // title.appendChild(el("span", "", "Model Manager + RVC"));
   brand.appendChild(title);
   sidebar.appendChild(brand);
 
@@ -795,7 +781,7 @@ function mount() {
   ui.logDetails.appendChild(ui.logBox);
 
   const followRow = el("div", "row");
-  const f = checkbox("Следовать за концом", state.logFollow);
+  const f = checkbox("Авто-прокрутка вниз", state.logFollow);
   ui.followChk = f.input;
   f.input.onchange = () => {
     state.logFollow = f.input.checked;
@@ -885,7 +871,7 @@ function renderLeft() {
     const d2 = document.createElement("details");
     d2.open = false;
     const s2 = document.createElement("summary");
-    s2.textContent = "Установка из ZIP";
+    s2.textContent = "Распаковка из ZIP";
     d2.appendChild(s2);
 
     const zipPath = inputText("Путь к ZIP...");
@@ -907,7 +893,7 @@ function renderLeft() {
 
     d2.appendChild(field("ZIP", row(zipPath, pickZip)));
     d2.appendChild(field("Имя модели", zipName));
-    const runZip = btn("Установить ZIP", "btn primary");
+    const runZip = btn("Распаковать ZIP", "btn primary");
     runZip.onclick = () => installModelZip();
     d2.appendChild(runZip);
     card.appendChild(d2);
@@ -918,7 +904,7 @@ function renderLeft() {
     const d3 = document.createElement("details");
     d3.open = false;
     const s3 = document.createElement("summary");
-    s3.textContent = "Установка из .pth/.index";
+    s3.textContent = "Загрузка .pth/.index";
     d3.appendChild(s3);
 
     const pthPath = inputText("Путь к .pth...");
@@ -954,7 +940,7 @@ function renderLeft() {
     d3.appendChild(field(".pth", row(pthPath, pickPth)));
     d3.appendChild(field(".index", row(idxPath, pickIdx)));
     d3.appendChild(field("Имя модели", filesName));
-    const runFiles = btn("Установить файлы", "btn primary");
+    const runFiles = btn("Загрузить файлы", "btn primary");
     runFiles.onclick = () => installModelFiles();
     d3.appendChild(runFiles);
     card.appendChild(d3);

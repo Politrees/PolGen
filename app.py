@@ -4,14 +4,16 @@ import sys
 import warnings
 from typing import Any
 
-
+# --- Unicode-safe stdio (fix Windows cp1252/cp866 issues with tqdm/Gradio) ---
 def _configure_unicode_stdio() -> None:
+    # Важно: tqdm пишет чаще в stderr. Нам нужно, чтобы и stdout и stderr не падали на Unicode.
     try:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
+        # Даже если не получилось — не валим запуск
         pass
 
 

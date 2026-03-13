@@ -3,6 +3,7 @@ setlocal enabledelayedexpansion
 title PolGen
 cd /d "%~dp0"
 
+REM ===== Unicode-safe console (fix tqdm/Gradio UnicodeEncodeError) =====
 chcp 65001 >nul
 set "PYTHONUTF8=1"
 set "PYTHONIOENCODING=utf-8"

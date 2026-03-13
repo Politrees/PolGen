@@ -28,7 +28,7 @@ omegaconf
 faiss-cpu
 tensorboardX
 
-# Desktop backend API
+# Desktop backend API (для Tauri UI)
 fastapi>=0.110.0,<1.0.0
 uvicorn[standard]>=0.27.0
 python-multipart>=0.0.9

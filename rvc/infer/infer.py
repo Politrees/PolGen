@@ -26,49 +26,53 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 config = Config()
 
 
-# Отображает прогресс выполнения задачи.
+def clear_gpu_cache():
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    if torch.backends.mps.is_available():
+        torch.mps.empty_cache()
+
+
 def display_progress(percent, message, is_print, progress=None):
+    """
+    progress — любой объект/функция, которую можно вызвать как:
+      progress(percent, desc="...")
+    """
     if is_print:
         print(message)
     if progress is not None:
         try:
             progress(percent, desc=message)
         except TypeError:
+            # на случай если progress ожидает (percent, message)
             progress(percent, message)
 
 
-# Загружает модель RVC и индекс по имени модели.
 def load_rvc_model(rvc_model):
     model_dir = os.path.join(RVC_MODELS_DIR, rvc_model)
     if not os.path.isdir(model_dir):
         raise FileNotFoundError(f"Папка модели {rvc_model} не найдена в {RVC_MODELS_DIR}")
 
-    # Находим файл модели с расширением .pth
     rvc_model_path = next((os.path.join(model_dir, f) for f in os.listdir(model_dir) if f.endswith(".pth")), None)
-    # Находим файл индекса с расширением .index
     rvc_index_path = next((os.path.join(model_dir, f) for f in os.listdir(model_dir) if f.endswith(".index")), None)
 
-    # Проверяем, существует ли файл модели
     if not rvc_model_path:
         raise FileNotFoundError(f"Модель {rvc_model} не содержит .pth файла!")
 
     return rvc_model_path, rvc_index_path
 
 
-# Загружает модель Hubert
 def load_hubert(model_path):
     hubert = load_model(model_path).to(config.device).eval()
     return hubert
 
 
-# Получает конвертер голоса
 def get_vc(model_path):
-    # Загружаем состояние модели
     cpt = torch.load(model_path, map_location="cpu", weights_only=True)
     if "config" not in cpt or "weight" not in cpt:
         raise ValueError(f"Некорректный формат модели {model_path}. Используйте модель RVC.")
 
-    # Извлекаем параметры модели
     tgt_sr = cpt["config"][-1]
     cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]
 
@@ -77,29 +81,30 @@ def get_vc(model_path):
     vocoder = cpt.get("vocoder", "HiFi-GAN")
     input_dim = 768 if version == "v2" else 256
 
-    # Инициализируем синтезатор
     net_g = Synthesizer(*cpt["config"], use_f0=use_f0, text_enc_hidden_dim=input_dim, vocoder=vocoder)
 
-    # Удаляем ненужный слой
     del net_g.enc_q
     net_g.load_state_dict(cpt["weight"], strict=False)
     net_g = net_g.to(config.device).float().eval()
 
-    # Инициализируем объект конвертера голоса
     vc = VC(tgt_sr, config)
     return cpt, version, net_g, tgt_sr, vc, use_f0
 
 
-# Синтезирует текст в речь с использованием edge_tts.
 async def text_to_speech(voice, text, rate, volume, pitch, output_path):
     if not -100 <= rate <= 100 or not -100 <= volume <= 100 or not -100 <= pitch <= 100:
         raise ValueError("Параметры Rate, Volume и Pitch должны быть в диапазоне от -100 до +100.")
 
-    communicate = edge_tts.Communicate(voice=voice, text=text, rate=f"{rate:+d}%", volume=f"{volume:+d}%", pitch=f"{pitch:+d}Hz")
+    communicate = edge_tts.Communicate(
+        voice=voice,
+        text=text,
+        rate=f"{rate:+d}%",
+        volume=f"{volume:+d}%",
+        pitch=f"{pitch:+d}Hz",
+    )
     await communicate.save(output_path)
 
 
-# Выполнение инференса с использованием RVC
 def rvc_infer(
     rvc_model=None,
     input_path=None,
@@ -137,9 +142,9 @@ def rvc_infer(
     display_progress(0.3, "Получаем конвертер голоса...", False, progress)
     cpt, version, net_g, tgt_sr, vc, use_f0 = get_vc(model_path)
 
-    # Построение имени выходного файла
     base_name = os.path.splitext(os.path.basename(input_path))[0]
-    if len(base_name) > 100:  # Сменить имя выходного файла, если длина исходного более 100 символов
+    if len(base_name) > 100:
+        # раньше был gr.Warning, но для backend/cli это лишнее — просто печатаем
         print("[!] Имя файла > 100 символов — будет сокращено.")
         base_name = f"{base_name[:25]}... (Made_in_PolGen)"
     output_path = os.path.join(OUTPUT_DIR, f"{base_name}_({rvc_model}).{output_format}")
@@ -148,41 +153,50 @@ def rvc_infer(
     audio = load_audio(input_path, 16000)
 
     display_progress(0.5, f"[🌌] Преобразуем аудио '{base_name}'...", True, progress)
-    audio_opt = vc.pipeline(
-        model=hubert_model,
-        net_g=net_g,
-        sid=0,
-        audio=audio,
-        pitch=0 if autopitch else rvc_pitch,
-        f0_min=f0_min,
-        f0_max=f0_max,
-        f0_method=f0_method,
-        file_index=index_path,
-        index_rate=index_rate,
-        pitch_guidance=use_f0,
-        volume_envelope=volume_envelope,
-        version=version,
-        protect=protect,
-        autopitch=autopitch,
-        autopitch_threshold=autopitch_threshold,
-        autotune=autotune,
-        autotune_tonic=autotune_tonic,
-        autotune_scale=autotune_scale,
-        autotune_strength=autotune_strength,
-    )
+    
+    try:
+        audio_opt = vc.pipeline(
+            model=hubert_model,
+            net_g=net_g,
+            sid=0,
+            audio=audio,
+            pitch=0 if autopitch else rvc_pitch,
+            f0_min=f0_min,
+            f0_max=f0_max,
+            f0_method=f0_method,
+            file_index=index_path,
+            index_rate=index_rate,
+            pitch_guidance=use_f0,
+            volume_envelope=volume_envelope,
+            version=version,
+            protect=protect,
+            autopitch=autopitch,
+            autopitch_threshold=autopitch_threshold,
+            autotune=autotune,
+            autotune_tonic=autotune_tonic,
+            autotune_scale=autotune_scale,
+            autotune_strength=autotune_strength,
+        )
 
-    display_progress(0.8, "[💫] Сохраняем результат...", True, progress)
-    save_audio(audio_opt, tgt_sr, output_path, output_format, stereo_sound)
+        display_progress(0.8, "[💫] Сохраняем результат...", True, progress)
+        save_audio(audio_opt, tgt_sr, output_path, output_format, stereo_sound)
 
-    if audio_upscaling:
-        display_progress(0.9, "[🚀] Улучшаем качество аудио...", True, progress)
-        upscale(output_path, OUTPUT_DIR, 2, config.device)
+        if audio_upscaling:
+            display_progress(0.9, "[🚀] Улучшаем качество аудио...", True, progress)
+            upscale(output_path, OUTPUT_DIR, 2, config.device)
 
-    display_progress(0.95, "Освобождаем память...", False, progress)
-    del hubert_model, cpt, net_g, vc
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+        display_progress(0.95, "Освобождаем ресурсы...", False, progress)
+        # Удаляем тяжелые объекты
+        if 'hubert_model' in locals(): del hubert_model
+        if 'net_g' in locals(): del net_g
+        if 'vc' in locals(): del vc
+        if 'cpt' in locals(): del cpt
+        
+        clear_gpu_cache()
+
+    except Exception as e:
+        clear_gpu_cache()
+        raise e
 
     display_progress(1.0, f"[✅] Преобразование завершено — {output_path}", True, progress)
     return output_path
