@@ -1,0 +1,40 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist",
+    "withGlobalTauri": false
+  },
+  "package": {
+    "productName": "PolGen Desktop",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "dialog": { "open": true, "save": true },
+      "window": { "all": true },
+      "fs": { "readFile": true }
+    },
+    "bundle": {
+      "active": true,
+      "identifier": "com.politrees.polgen.desktop",
+      "icon": ["icons/icon.ico"]
+    },
+    "security": { "csp": null },
+    "windows": [
+      {
+        "title": "PolGen Desktop",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 980,
+        "minHeight": 680,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true
+      }
+    ]
+  }
+}

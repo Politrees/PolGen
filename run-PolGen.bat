@@ -3,6 +3,10 @@ setlocal enabledelayedexpansion
 title PolGen
 cd /d "%~dp0"
 
+chcp 65001 >nul
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
+
 if not exist env\python.exe (
     echo Error: Virtual environment not found or incomplete.
     echo Please run 'run-PolGen-installer.bat' first to set up the environment.

@@ -27,10 +27,14 @@ config = Config()
 
 
 # Отображает прогресс выполнения задачи.
-def display_progress(percent, message, is_print, progress=gr.Progress()):
+def display_progress(percent, message, is_print, progress=None):
     if is_print:
         print(message)
-    progress(percent, desc=message)
+    if progress is not None:
+        try:
+            progress(percent, desc=message)
+        except TypeError:
+            progress(percent, message)
 
 
 # Загружает модель RVC и индекс по имени модели.
@@ -119,33 +123,31 @@ def rvc_infer(
 ):
     if not rvc_model:
         raise ValueError("Не выбрана модель для RVC-инференса")
-    if not os.path.exists(input_path):
+    if not input_path or not os.path.exists(input_path):
         raise FileNotFoundError(f"Файл '{input_path}' не найден!")
 
-    display_progress(0, "\n[⚙️] Запуск конвейера генерации...", True)
+    display_progress(0, "\n[⚙️] Запуск конвейера генерации...", True, progress)
 
-    # Загружаем модель Hubert
-    display_progress(0.1, "Загружаем модель HuBERT...", False)
+    display_progress(0.1, "Загружаем модель HuBERT...", False, progress)
     hubert_model = load_hubert(HUBERT_BASE_PATH)
-    # Загружаем модель RVC и индекс
-    display_progress(0.2, f"Загружаем модель '{rvc_model}'...", False)
+
+    display_progress(0.2, f"Загружаем модель '{rvc_model}'...", False, progress)
     model_path, index_path = load_rvc_model(rvc_model)
-    # Получаем конвертер голоса
-    display_progress(0.3, "Получаем конвертер голоса...", False)
+
+    display_progress(0.3, "Получаем конвертер голоса...", False, progress)
     cpt, version, net_g, tgt_sr, vc, use_f0 = get_vc(model_path)
 
     # Построение имени выходного файла
     base_name = os.path.splitext(os.path.basename(input_path))[0]
     if len(base_name) > 100:  # Сменить имя выходного файла, если длина исходного более 100 символов
-        gr.Warning("Имя файла превышает 100 символов и будет сокращено для удобства.")
+        print("[!] Имя файла > 100 символов — будет сокращено.")
         base_name = f"{base_name[:25]}... (Made_in_PolGen)"
     output_path = os.path.join(OUTPUT_DIR, f"{base_name}_({rvc_model}).{output_format}")
 
-    # Загружаем аудиофайл
-    display_progress(0.4, "Загружаем аудио...", False)
+    display_progress(0.4, "Загружаем аудио...", False, progress)
     audio = load_audio(input_path, 16000)
 
-    display_progress(0.5, f"[🌌] Преобразуем аудио '{base_name}'...", True)
+    display_progress(0.5, f"[🌌] Преобразуем аудио '{base_name}'...", True, progress)
     audio_opt = vc.pipeline(
         model=hubert_model,
         net_g=net_g,
@@ -169,22 +171,21 @@ def rvc_infer(
         autotune_strength=autotune_strength,
     )
 
-    # Сохраняем файл
-    display_progress(0.8, "[💫] Сохраняем результат...", True)
+    display_progress(0.8, "[💫] Сохраняем результат...", True, progress)
     save_audio(audio_opt, tgt_sr, output_path, output_format, stereo_sound)
 
     if audio_upscaling:
-        display_progress(0.9, "[🚀] Улучшаем качество аудио...", True)
+        display_progress(0.9, "[🚀] Улучшаем качество аудио...", True, progress)
         upscale(output_path, OUTPUT_DIR, 2, config.device)
 
-    # Освобождаем память
-    display_progress(0.95, "Освобождаем память...", False)
+    display_progress(0.95, "Освобождаем память...", False, progress)
     del hubert_model, cpt, net_g, vc
     gc.collect()
-    torch.cuda.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
-    display_progress(1.0, f"[✅] Преобразование завершено — {output_path}", True)
-    return gr.Audio(output_path, label=os.path.basename(output_path))
+    display_progress(1.0, f"[✅] Преобразование завершено — {output_path}", True, progress)
+    return output_path
 
 
 def rvc_edgetts_infer(
@@ -219,8 +220,10 @@ def rvc_edgetts_infer(
         raise ValueError("Введите текст!")
     if not tts_voice:
         raise ValueError("Выберите голос!")
+    if not rvc_model:
+        raise ValueError("Не выбрана RVC модель!")
 
-    display_progress(1.0, "[🎙️] Синтезируем речь...", False)
+    display_progress(0.05, "[🎙️] Синтезируем речь...", False, progress)
     input_path = os.path.join(OUTPUT_DIR, "TTS_Voice.wav")
     asyncio.run(text_to_speech(tts_voice, tts_text, tts_rate, tts_volume, tts_pitch, input_path))
 
@@ -243,6 +246,7 @@ def rvc_edgetts_infer(
         audio_upscaling=audio_upscaling,
         stereo_sound=stereo_sound,
         output_format=output_format,
+        progress=progress,
     )
 
     return input_path, output_path

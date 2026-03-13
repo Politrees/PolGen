@@ -1,0 +1,18 @@
+[package]
+name = "polgen-desktop"
+version = "0.1.0"
+description = "PolGen Desktop (Tauri v1) - native UI for PolGen"
+authors = ["Politrees"]
+license = "MIT"
+repository = ""
+edition = "2021"
+build = "build.rs"
+
+[build-dependencies]
+tauri-build = { version = "1", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "1", features = [ "fs-read-file", "dialog-open", "window-all", "dialog-save"] }
+fs2 = "0.4"

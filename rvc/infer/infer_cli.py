@@ -1,7 +1,21 @@
 import argparse
 import logging
 import os
+import sys
 import warnings
+
+
+def _configure_unicode_stdio() -> None:
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+_configure_unicode_stdio()
 
 # Configuring the environment and logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Disable unnecessary TensorFlow logs
@@ -17,10 +31,8 @@ def strtobool(val: str) -> bool:
     lower_val = val.lower()
     if lower_val in ("y", "yes", "t", "true", "on", "1"):
         return True
-
     if lower_val in ("n", "no", "f", "false", "off", "0"):
         return False
-
     raise ValueError(f"Недопустимое значение: {val!r}")
 
 
@@ -104,5 +116,5 @@ def main():
 
 
 if __name__ == "__main__":
-    check_and_install_models()  # Checking and installing models
+    check_and_install_models()
     main()

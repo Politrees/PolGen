@@ -4,6 +4,19 @@ import sys
 import warnings
 from typing import Any
 
+
+def _configure_unicode_stdio() -> None:
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+_configure_unicode_stdio()
+
 # Configuring the environment and logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Disable unnecessary TensorFlow logs
 os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"  # Disabling Gradio analytics
