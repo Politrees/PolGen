@@ -14,5 +14,13 @@ tauri-build = { version = "1", features = [] }
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tauri = { version = "1", features = [ "fs-read-file", "dialog-open", "window-all", "dialog-save"] }
+tauri = { version = "1", features = [
+  "fs-read-file",
+  "dialog-open",
+  "dialog-save",
+  "window-all",
+  "protocol-asset",
+] }
 fs2 = "0.4"
+ureq = "2"
+zip = "2"

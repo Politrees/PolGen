@@ -1,9 +1,9 @@
 import gradio as gr
 
 from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
+from rvc.modules.edge_voices import edge_voices
 from tabs.components.modules import (
     OUTPUT_FORMAT,
-    edge_voices,
     get_folders,
     process_file_upload,
     show_autotune,

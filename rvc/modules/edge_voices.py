@@ -1,3 +1,9 @@
+"""Общий словарь голосов Edge TTS.
+
+Используется как в Gradio UI (tabs/components/modules.py),
+так и в FastAPI backend (polgen_backend/app.py).
+"""
+
 edge_voices: dict[str, list[str]] = {
     "Английский (Великобритания)": ["en-GB-SoniaNeural", "en-GB-RyanNeural"],
     "Английский (США)": ["en-US-JennyNeural", "en-US-GuyNeural"],

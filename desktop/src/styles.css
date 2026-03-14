@@ -1,4 +1,4 @@
-/* ===== 1. Базовые настройки PolGen ===== */
+/* ===== 1. Базовые настройки ===== */
 :root {
   --bg-color: #0b0e14;
   --sidebar-bg: rgba(21, 27, 35, 0.85);
@@ -10,6 +10,7 @@
   --text-muted: #8b949e;
   --border-color: rgba(255, 255, 255, 0.1);
   --radius: 12px;
+  --danger: #f85149;
 }
 
 * {
@@ -20,12 +21,15 @@
   padding: 0;
 }
 
-input, textarea, select { -webkit-user-select: text; outline: none; }
+input, textarea, select {
+  -webkit-user-select: text;
+  outline: none;
+}
 
 body {
   height: 100vh;
   background-color: var(--bg-color);
-  background-image: 
+  background-image:
     radial-gradient(at 0% 0%, rgba(35, 134, 54, 0.12) 0px, transparent 45%),
     radial-gradient(at 100% 100%, rgba(31, 111, 235, 0.08) 0px, transparent 45%);
   color: var(--text-main);
@@ -36,10 +40,16 @@ body {
 
 .app {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 260px 1fr;
 }
 
-/* ===== 2. Sidebar (Сайдбар) ===== */
+.text-muted {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+/* ===== 2. Sidebar ===== */
 .sidebar {
   background: var(--sidebar-bg);
   backdrop-filter: blur(15px);
@@ -49,179 +59,735 @@ body {
   padding: 24px 16px;
 }
 
-.brand { display: flex; align-items: center; gap: 14px; margin-bottom: 30px; padding: 0 4px; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 30px;
+  padding: 0 4px;
+}
 .brand .logo {
-  width: 44px; height: 44px;
+  width: 44px;
+  height: 44px;
   background: linear-gradient(135deg, var(--accent-color), #166534);
   border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
-.brand .title b { font-size: 17px; color: #fff; display: block; }
-.brand .title span { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.brand .title b {
+  font-size: 17px;
+  color: #fff;
+  display: block;
+}
+.brand .title span {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 
-.nav { display: flex; flex-direction: column; gap: 6px; }
-.nav button {
-  all: unset; cursor: pointer; padding: 12px 14px;
-  border-radius: 10px; font-size: 14px; font-weight: 500;
-  color: var(--text-muted); transition: 0.2s;
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.nav button:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.nav button {
+  all: unset;
+  cursor: pointer;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: 0.2s;
+}
+.nav button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
 .nav button.active {
   background: rgba(35, 134, 54, 0.15);
   color: var(--accent-text);
-  box-shadow: inset 0 0 0 1px rgba(35,134,54,0.3);
+  box-shadow: inset 0 0 0 1px rgba(35, 134, 54, 0.3);
+}
+.nav button.nav-disabled {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: default;
 }
 
-.status { margin-top: auto; padding: 12px; background: rgba(0,0,0,0.25); border-radius: 10px; border: 1px solid var(--border-color); }
-.badge { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--text-muted); }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: #30363d; }
-.dot.ok { background: #3fb950; box-shadow: 0 0 8px rgba(63, 185, 80, 0.6); }
+.status {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #30363d;
+  flex-shrink: 0;
+}
+.dot.ok {
+  background: #3fb950;
+  box-shadow: 0 0 8px rgba(63, 185, 80, 0.6);
+}
+.dot.warn {
+  background: #d29922;
+  box-shadow: 0 0 6px rgba(210, 153, 34, 0.4);
+}
 
-/* ===== 3. Основной заголовок ===== */
-.main { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.sidebar-refresh {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  transition: 0.2s;
+}
+.sidebar-refresh:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+
+/* ===== 3. Titlebar ===== */
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
 
 .titlebar {
-  display: flex; align-items: center;
-  padding: 0 16px; min-height: 52px;
-  background: rgba(255,255,255,0.02);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  min-height: 48px;
+  background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid var(--border-color);
   -webkit-app-region: drag;
+  flex-shrink: 0;
 }
-.titlebar h1 { font-size: 14px; font-weight: 600; color: var(--text-muted); margin: 0; }
+.titlebar h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0;
+}
 .titlebar .spacer { flex: 1; }
 
-.titlebar .btn {
+.windowBtns {
+  display: flex;
+  gap: 4px;
   -webkit-app-region: no-drag;
-  margin-right: 15px; padding: 0 15px;
-  height: 32px; font-size: 13px;
-  background: rgba(255,255,255,0.08);
 }
-
-.windowBtns { display: flex; gap: 4px; -webkit-app-region: no-drag; }
 .winBtn {
-  all: unset; cursor: pointer; width: 32px; height: 32px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 6px; color: var(--text-muted); transition: 0.2s;
+  all: unset;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: 0.2s;
 }
-.winBtn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-.winBtn.close:hover { background: #da3633; }
+.winBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.winBtn.close:hover {
+  background: #da3633;
+}
 
-/* ===== 4. Сетка и Правая Панель ===== */
+/* ===== 4. Content Grid (нормальный режим) ===== */
 .content {
   display: grid;
   grid-template-columns: 1fr 380px;
-  gap: 24px; padding: 24px;
+  gap: 24px;
+  padding: 24px;
   overflow-y: auto;
   align-items: start;
+  flex: 1;
+  min-height: 0;
 }
 
-@media (max-width: 1100px) { .content { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) {
+  .content { grid-template-columns: 1fr; }
+}
 
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 20px;
-  display: flex; flex-direction: column; gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-.card h2 { font-size: 16px; margin: 0; font-weight: 600; }
-
-/* ФИКС: Скрываем бэкенд и баннер с кнопками справа */
-.kv > div:first-child { display: none !important; }
-.banner { display: none !important; }
-
-.kv { display: flex; flex-direction: column; gap: 10px; }
-.kv div { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
-.kv span { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
-.kv b { 
-  font-size: 12px; color: #fff; text-align: right;
-  word-break: break-all; max-width: 200px; font-family: ui-monospace, SFMono-Regular, monospace;
+.card h2 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 600;
 }
 
-/* ФИКС: ЛОГИ (каждая запись отдельно) */
+/* ===== 5. KV Info ===== */
+.kv {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kv > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+.kv span {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.kv b {
+  font-size: 12px;
+  color: #fff;
+  text-align: right;
+  word-break: break-all;
+  max-width: 200px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ===== 6. Banner ===== */
+.banner {
+  background: rgba(210, 153, 34, 0.1);
+  border: 1px solid rgba(210, 153, 34, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+}
+.banner.error {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+.bannerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.bannerTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.bannerBtns {
+  display: flex;
+  gap: 6px;
+}
+.bannerBtns .btn {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+.bannerMsg {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* ===== 7. Progress Bar ===== */
+.progressBar {
+  height: 8px;
+  background: #21262d;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progressBar div {
+  height: 100%;
+  background: linear-gradient(90deg, #238636, #2ea043);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+.small {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ===== 8. Logs ===== */
 .log {
   background: #010409;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  padding: 12px; height: 300px;
-  overflow-y: auto; font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 11px; color: #8b949e; line-height: 1.6;
-  white-space: pre-wrap; /* Переносит длинные строки и сохраняет ручные переносы */
-  display: block;
+  padding: 12px;
+  height: 280px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  color: #8b949e;
+  line-height: 1.6;
+  white-space: pre-wrap;
   word-wrap: break-word;
+  display: block;
 }
 
-.log-controls { display: flex; align-items: center; justify-content: space-between; padding: 5px; }
+/* ===== 9. Forms ===== */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
 
-/* ===== 5. Формы Установщиков ===== */
-.field { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-.field label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  align-items: stretch;
+}
 
-.row { display: flex; gap: 8px; width: 100%; align-items: stretch; }
-
-input[type="text"], input[type="number"], select {
-  flex: 1; min-height: 40px;
+input[type="text"],
+input[type="number"],
+select {
+  flex: 1;
+  min-height: 40px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 0 14px;
-  color: #fff; font-size: 13px;
+  color: #fff;
+  font-size: 13px;
   transition: 0.2s;
 }
-input:focus { outline: none; border-color: var(--accent-color); }
-
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  cursor: pointer; padding: 0 16px; height: 40px;
-  background: #21262d; border: 1px solid var(--border-color);
-  border-radius: 8px; color: #c9d1d9; font-size: 13px; font-weight: 600;
-  transition: 0.2s; white-space: nowrap;
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+  border-color: var(--accent-color);
 }
-.btn:hover { background: #30363d; border-color: #8b949e; }
-.btn.primary { background: var(--accent-color); border: none; color: #fff; width: 100%; margin-top: 5px; height: 42px;}
-.btn.primary:hover { background: var(--accent-hover); box-shadow: 0 0 15px rgba(35, 134, 54, 0.25); }
 
-/* Accordion */
-details {
-  background: rgba(255,255,255,0.03);
+textarea {
+  width: 100%;
+  min-height: 100px;
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
-  border-radius: 12px; overflow: hidden;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 13px;
+  resize: vertical;
+  font-family: inherit;
+  transition: 0.2s;
 }
-details[open] { border-color: var(--accent-color); }
+textarea:focus {
+  border-color: var(--accent-color);
+}
+
+/* ===== 10. Model Select Row ===== */
+.model-select-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  width: 100%;
+}
+.model-select-row select {
+  flex: 1;
+}
+.refresh-btn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 16px;
+  transition: 0.2s;
+  flex-shrink: 0;
+}
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-color);
+  color: var(--accent-text);
+}
+
+/* ===== 11. Slider ===== */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.slider-row input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #21262d;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  border: 2px solid #fff;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 8px rgba(35, 134, 54, 0.5);
+}
+.slider-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-text);
+  min-width: 42px;
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ===== 12. Checkbox ===== */
+.checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 6px 0;
+}
+.checkbox-wrap input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.checkbox-wrap span {
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+/* ===== 13. Buttons ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0 16px;
+  height: 40px;
+  background: #21262d;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: #c9d1d9;
+  font-size: 13px;
+  font-weight: 600;
+  transition: 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn:hover {
+  background: #30363d;
+  border-color: #8b949e;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+.btn.primary {
+  background: var(--accent-color);
+  border: none;
+  color: #fff;
+  width: 100%;
+  margin-top: 5px;
+  height: 42px;
+}
+.btn.primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 15px rgba(35, 134, 54, 0.25);
+}
+.btn.primary:disabled {
+  background: #21262d;
+  box-shadow: none;
+}
+
+/* ===== 14. Accordion ===== */
+details {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+details[open] {
+  border-color: rgba(35, 134, 54, 0.3);
+}
 summary {
-  padding: 14px; cursor: pointer; font-size: 13px; font-weight: 700;
-  background: rgba(255,255,255,0.02); color: #fff;
+  padding: 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.02);
+  color: #fff;
+  transition: 0.2s;
 }
-details > div { padding: 18px; display: flex; flex-direction: column; gap: 15px; }
+summary:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.accordion-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.autotune-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(35, 134, 54, 0.2);
+}
 
-/* ===== 6. ФИКС: ЧИПЫ МОДЕЛЕЙ И ИКОНКИ ===== */
-.chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 5px; }
+/* ===== 15. Model Chips ===== */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 5px;
+}
 .chip {
-  display: flex; align-items: center; gap: 12px;
-  background: rgba(56, 139, 253, 0.1); border: 1px solid rgba(56, 139, 253, 0.25);
-  padding: 8px 16px; border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(56, 139, 253, 0.1);
+  border: 1px solid rgba(56, 139, 253, 0.25);
+  padding: 8px 16px;
+  border-radius: 50px;
+  transition: 0.2s;
 }
-.chipName { font-size: 13px; font-weight: 600; color: #58a6ff; }
-.chipActions { display: flex; gap: 10px; }
-
-/* Тот самый фикс "красивых иконок" (просто прозрачные символы) */
+.chip:hover {
+  background: rgba(56, 139, 253, 0.15);
+}
+.chipName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #58a6ff;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chipActions {
+  display: flex;
+  gap: 8px;
+}
 .iconBtn {
   all: unset;
   cursor: pointer;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  transition: opacity 0.2s;
+  font-size: 14px;
+  transition: 0.2s;
 }
-.iconBtn:hover { opacity: 0.8; color: #fff; }
-.iconBtn.danger:hover { color: #f85149; }
+.iconBtn:hover {
+  color: #fff;
+}
+.iconBtn.danger:hover {
+  color: var(--danger);
+}
 
-/* ===== 7. Системные элементы ===== */
-.progressBar { height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; }
-.progressBar div { height: 100%; background: linear-gradient(90deg, #238636, #2ea043); transition: width 0.3s ease; }
+/* ===== 16. HR ===== */
+.hr {
+  height: 1px;
+  background: var(--border-color);
+  border: none;
+  margin: 4px 0;
+}
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; border: 2px solid var(--bg-color); }
+/* ===== 17. Player Footer ===== */
+.player-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-color);
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(12px);
+  padding: 0 20px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+}
+.player-footer audio {
+  display: none;
+}
+.player-footer.player-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.player-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.player-play {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: 0.2s;
+}
+.player-play:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: 0 0 12px rgba(35, 134, 54, 0.4);
+}
+.player-play:disabled {
+  background: #21262d;
+  cursor: default;
+}
+
+.player-time {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: var(--text-muted);
+  min-width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.player-seek {
+  flex: 1;
+  height: 5px;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  min-width: 80px;
+  background: linear-gradient(
+    to right,
+    var(--accent-color) 0%,
+    var(--accent-color) var(--progress, 0%),
+    #21262d var(--progress, 0%),
+    #21262d 100%
+  );
+}
+.player-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent-color);
+  cursor: pointer;
+  transition: 0.1s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.player-seek::-webkit-slider-thumb:hover {
+  background: var(--accent-text);
+  box-shadow: 0 0 8px rgba(35, 134, 54, 0.5);
+}
+.player-seek:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.player-seek:disabled::-webkit-slider-thumb {
+  background: #30363d;
+  border-color: #30363d;
+  cursor: default;
+}
+
+.player-filename {
+  font-size: 12px;
+  color: var(--text-main);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.player-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.player-action {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 15px;
+  transition: 0.2s;
+}
+.player-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* ===== 18. Scrollbars ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 10px;
+  border: 2px solid var(--bg-color);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

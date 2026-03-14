@@ -118,6 +118,31 @@ def upload_separate_files(pth_file, index_file, dir_name, progress=gr.Progress()
         raise gr.Error(f"Ошибка при загрузке модели: {e!s}")
 
 
+# Удаление модели RVC по имени
+def delete_model(model_name):
+    """Удаляет папку модели RVC по имени.
+
+    Args:
+        model_name: Имя модели (имя папки внутри RVC_models).
+
+    Raises:
+        FileNotFoundError: Если модель не найдена.
+
+    """
+    if not model_name or not model_name.strip():
+        raise ValueError("Имя модели пустое")
+
+    # Защита от path traversal
+    if ".." in model_name or "/" in model_name or "\\" in model_name:
+        raise ValueError(f"Некорректное имя модели: {model_name}")
+
+    target_dir = os.path.join(rvc_models_dir, model_name.strip())
+    if not os.path.isdir(target_dir):
+        raise FileNotFoundError(f"Модель не найдена: {model_name}")
+
+    shutil.rmtree(target_dir, ignore_errors=True)
+
+
 # Основная функция для вызова из командной строки
 def main():
     if len(sys.argv) != 3:

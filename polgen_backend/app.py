@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import os
-import shutil
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from polgen_backend.edge_voices import edge_voices
+from rvc.modules.edge_voices import edge_voices
+from rvc.modules.model_manager import delete_model
 from polgen_backend.jobs import JobManager, sse_event_generator
-from polgen_backend.model_install import delete_rvc_model
 from polgen_backend.schemas import (
     ConvertFileRequest,
     EdgeVoicesResponse,
@@ -53,15 +52,20 @@ def list_rvc_models() -> dict[str, list[str]]:
     return {"models": models}
 
 @app.delete("/models/rvc/{model_name}")
-def delete_model(model_name: str) -> dict[str, str]:
-    delete_rvc_model(model_name)
+def api_delete_model(model_name: str) -> dict[str, str]:
+    try:
+        delete_model(model_name)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"message": "deleted"}
 
 @app.post("/jobs/convert", response_model=JobStartedResponse)
 def start_convert(req: ConvertFileRequest):
     if not req.rvc_model:
         raise HTTPException(status_code=400, detail="rvc_model is empty")
-    
+
     job = jobs.create_job()
     payload = req.model_dump()
     payload["mode"] = "convert"
@@ -98,7 +102,6 @@ def install_model_files(req: ModelInstallLocalRequest):
     job = jobs.create_job()
     payload = req.model_dump()
     payload["mode"] = "install_rvc_files"
-    # Для этого режима передается pth через path, index через extra_path
     payload["pth_path"] = req.path
     payload["index_path"] = req.extra_path
     jobs.run_worker_job(job, payload)
