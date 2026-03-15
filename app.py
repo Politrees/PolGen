@@ -26,7 +26,6 @@ logging.basicConfig(level=logging.WARNING)  # Disable all logs, except WARNING a
 warnings.filterwarnings("ignore")  # Disable all warnings
 
 import gradio as gr
-from PolUVR.utils import PolUVR_UI
 
 from assets.model_installer import check_and_install_models
 from assets.notebook_check import colab_check, kaggle_check
@@ -34,6 +33,7 @@ from assets.version import __version__, __version_info__
 from gradio_ui.components.modules import output_message
 from gradio_ui.inference import edge_tts_tab, inference_tab
 from gradio_ui.install import files_upload, install_hubert_tab, url_zip_download, zip_upload
+from gradio_ui.uvr import PolUVR_UI
 from gradio_ui.welcome import welcome_tab
 
 # Constants
