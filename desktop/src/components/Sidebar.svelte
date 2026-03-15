@@ -27,13 +27,16 @@
 
   <div class="nav">
     <button class:active={$activeTab === "rvc"} on:click={() => setTab("rvc")}>
-      RVC
+      🎤 RVC
     </button>
     <button class:active={$activeTab === "tts"} on:click={() => setTab("tts")}>
-      TTS → RVC
+      🗣 TTS → RVC
+    </button>
+    <button class:active={$activeTab === "uvr"} on:click={() => setTab("uvr")}>
+      🎵 UVR
     </button>
     <button class:active={$activeTab === "models"} on:click={() => setTab("models")}>
-      Модели
+      📦 Модели
     </button>
   </div>
 

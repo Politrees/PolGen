@@ -18,6 +18,9 @@ from desktop.backend.schemas import (
     ModelInstallUrlRequest,
     ModelInstallLocalRequest,
     TtsConvertRequest,
+    UvrSeparateRequest,
+    UvrModelsResponse,
+    UvrClearModelsRequest,
 )
 
 RVC_MODELS_DIR = os.path.join(os.getcwd(), "models", "RVC_models")
@@ -37,14 +40,29 @@ app.add_middleware(
 )
 
 
+# ═══════════════════════════════════════════════════════════════
+# Health
+# ═══════════════════════════════════════════════════════════════
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True}
 
 
+# ═══════════════════════════════════════════════════════════════
+# Edge TTS voices
+# ═══════════════════════════════════════════════════════════════
+
+
 @app.get("/voices/edge", response_model=EdgeVoicesResponse)
 def list_edge_voices():
     return {"voices": edge_voices}
+
+
+# ═══════════════════════════════════════════════════════════════
+# RVC models
+# ═══════════════════════════════════════════════════════════════
 
 
 @app.get("/models/rvc")
@@ -66,6 +84,38 @@ def api_delete_model(model_name: str) -> dict[str, str]:
     return {"message": "deleted"}
 
 
+# ═══════════════════════════════════════════════════════════════
+# UVR models & info
+# ═══════════════════════════════════════════════════════════════
+
+
+@app.get("/uvr/models", response_model=UvrModelsResponse)
+def list_uvr_models():
+    from rvc.modules.uvr_core import get_available_models
+    return {"models": get_available_models()}
+
+
+@app.get("/uvr/formats")
+def list_uvr_formats() -> dict[str, list[str]]:
+    from rvc.modules.uvr_core import get_output_formats
+    return {"formats": get_output_formats()}
+
+
+@app.post("/uvr/models/clear")
+def clear_uvr_models(req: UvrClearModelsRequest) -> dict[str, str]:
+    from rvc.modules.uvr_core import clear_models
+    try:
+        msg = clear_models(req.model_dir)
+        return {"message": msg}
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════
+# Jobs — RVC
+# ═══════════════════════════════════════════════════════════════
+
+
 @app.post("/jobs/convert", response_model=JobStartedResponse)
 def start_convert(req: ConvertFileRequest):
     if not req.rvc_model:
@@ -85,6 +135,11 @@ def start_tts_convert(req: TtsConvertRequest):
     payload["mode"] = "tts_convert"
     jobs.run_worker_job(job, payload)
     return {"job_id": job.job_id}
+
+
+# ═══════════════════════════════════════════════════════════════
+# Jobs — Model installation
+# ═══════════════════════════════════════════════════════════════
 
 
 @app.post("/jobs/models/install_url", response_model=JobStartedResponse)
@@ -115,6 +170,32 @@ def install_model_files(req: ModelInstallLocalRequest):
     payload["index_path"] = req.extra_path
     jobs.run_worker_job(job, payload)
     return {"job_id": job.job_id}
+
+
+# ═══════════════════════════════════════════════════════════════
+# Jobs — UVR
+# ═══════════════════════════════════════════════════════════════
+
+
+@app.post("/jobs/uvr_separate", response_model=JobStartedResponse)
+def start_uvr_separate(req: UvrSeparateRequest):
+    if not req.audio_path:
+        raise HTTPException(status_code=400, detail="audio_path is empty")
+    if not req.model_key:
+        raise HTTPException(status_code=400, detail="model_key is empty")
+    if req.arch not in ("roformer", "mdx23c", "mdx", "vr", "demucs"):
+        raise HTTPException(status_code=400, detail=f"Unknown arch: {req.arch}")
+
+    job = jobs.create_job()
+    payload = req.model_dump()
+    payload["mode"] = "uvr_separate"
+    jobs.run_worker_job(job, payload)
+    return {"job_id": job.job_id}
+
+
+# ═══════════════════════════════════════════════════════════════
+# Job status & SSE
+# ═══════════════════════════════════════════════════════════════
 
 
 @app.get("/jobs/{job_id}", response_model=JobStatusResponse)

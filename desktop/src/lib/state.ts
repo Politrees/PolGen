@@ -4,6 +4,7 @@ import type {
   TabKey,
   RvcForm,
   TtsForm,
+  UvrForm,
   InstallUrlForm,
   InstallZipForm,
   InstallFilesForm,
@@ -23,6 +24,11 @@ export const backendReady = writable(false);
 
 export const models = writable<string[]>([]);
 export const edgeVoices = writable<Record<string, string[]>>({});
+
+// UVR
+export const uvrModels = writable<Record<string, string[]>>({});
+export const uvrFormats = writable<string[]>(["wav", "flac", "mp3", "ogg", "m4a"]);
+export const uvrStems = writable<string[]>([]);
 
 // ═══════════════════════════════════════════════════════════════
 // Navigation
@@ -140,6 +146,33 @@ export const ttsForm = writable<TtsForm>({
   stereo_sound: false,
   audio_upscaling: false,
   output_format: "mp3",
+});
+
+export const uvrForm = writable<UvrForm>({
+  audio_path: "",
+  arch: "roformer",
+  model_key: "",
+  model_dir: "models/UVR_models",
+  output_dir: "output/UVR_output",
+  output_format: "wav",
+  rename_template: "NAME_(STEM)_MODEL",
+  norm_threshold: 0.9,
+  amp_threshold: 0.0,
+  batch_size: 1,
+  segment_size: 256,
+  override_segment_size: false,
+  overlap: 8,
+  pitch_shift: 0,
+  hop_length: 1024,
+  denoise: false,
+  window_size: 512,
+  aggression: 5,
+  enable_tta: false,
+  enable_post_process: false,
+  post_process_threshold: 0.2,
+  high_end_process: false,
+  shifts: 2,
+  segments_enabled: true,
 });
 
 export const installUrlForm = writable<InstallUrlForm>({

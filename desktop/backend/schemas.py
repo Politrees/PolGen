@@ -5,6 +5,11 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+# ═══════════════════════════════════════════════════════════════
+# RVC
+# ═══════════════════════════════════════════════════════════════
+
+
 class ConvertBase(BaseModel):
     rvc_model: str
     f0_method: str = "rmvpe"
@@ -37,6 +42,11 @@ class TtsConvertRequest(ConvertBase):
     tts_pitch: int = 0
 
 
+# ═══════════════════════════════════════════════════════════════
+# Model management
+# ═══════════════════════════════════════════════════════════════
+
+
 class ModelInstallUrlRequest(BaseModel):
     url: str
     model_name: str
@@ -46,6 +56,72 @@ class ModelInstallLocalRequest(BaseModel):
     path: str
     extra_path: Optional[str] = None
     model_name: str
+
+
+# ═══════════════════════════════════════════════════════════════
+# UVR
+# ═══════════════════════════════════════════════════════════════
+
+
+class UvrSeparateRequest(BaseModel):
+    """Универсальная схема для сепарации аудио.
+
+    Поле `arch` определяет архитектуру модели и какие параметры используются:
+    - roformer, mdx23c: segment_size, override_segment_size, overlap, pitch_shift, batch_size
+    - mdx: hop_length, segment_size, overlap, denoise, batch_size
+    - vr: window_size, aggression, enable_tta, enable_post_process, post_process_threshold, high_end_process, batch_size
+    - demucs: segment_size, shifts, overlap, segments_enabled
+    """
+    # Обязательные
+    audio_path: str
+    arch: str  # roformer | mdx23c | mdx | vr | demucs
+    model_key: str
+
+    # Директории
+    model_dir: str = "models/UVR_models"
+    output_dir: str = "output/UVR_output"
+    output_format: str = "wav"
+    rename_template: str = "NAME_(STEM)_MODEL"
+
+    # Общие параметры
+    norm_threshold: float = 0.9
+    amp_threshold: float = 0.0
+    batch_size: int = 1
+
+    # Roformer / MDX23C
+    segment_size: int = 256
+    override_segment_size: bool = False
+    overlap: float = 8  # int для roformer/mdx23c, float для mdx/demucs
+    pitch_shift: int = 0
+
+    # MDX-NET
+    hop_length: int = 1024
+    denoise: bool = False
+
+    # VR ARCH
+    window_size: int = 512
+    aggression: int = 5
+    enable_tta: bool = False
+    enable_post_process: bool = False
+    post_process_threshold: float = 0.2
+    high_end_process: bool = False
+
+    # Demucs
+    shifts: int = 2
+    segments_enabled: bool = True
+
+
+class UvrModelsResponse(BaseModel):
+    models: dict[str, list[str]]
+
+
+class UvrClearModelsRequest(BaseModel):
+    model_dir: str
+
+
+# ═══════════════════════════════════════════════════════════════
+# Job responses
+# ═══════════════════════════════════════════════════════════════
 
 
 class JobStartedResponse(BaseModel):

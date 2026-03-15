@@ -5,6 +5,7 @@
   const titles: Record<string, string> = {
     rvc: "RVC • Конвертация аудио",
     tts: "TTS → RVC • Синтез и конвертация",
+    uvr: "UVR • Разделение аудио",
     models: "Модели • Установка / Удаление",
   };
 

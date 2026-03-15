@@ -7,7 +7,7 @@ export interface JobSnapshot {
   error?: string | null;
 }
 
-export type TabKey = "rvc" | "tts" | "models";
+export type TabKey = "rvc" | "tts" | "uvr" | "models";
 
 export interface RvcForm {
   input_path: string;
@@ -37,6 +37,45 @@ export interface TtsForm extends RvcForm {
   tts_rate: number;
   tts_volume: number;
   tts_pitch: number;
+}
+
+export type UvrArch = "roformer" | "mdx23c" | "mdx" | "vr" | "demucs";
+
+export interface UvrForm {
+  audio_path: string;
+  arch: UvrArch;
+  model_key: string;
+  model_dir: string;
+  output_dir: string;
+  output_format: string;
+  rename_template: string;
+
+  // Common
+  norm_threshold: number;
+  amp_threshold: number;
+  batch_size: number;
+
+  // Roformer / MDX23C
+  segment_size: number;
+  override_segment_size: boolean;
+  overlap: number;
+  pitch_shift: number;
+
+  // MDX-NET
+  hop_length: number;
+  denoise: boolean;
+
+  // VR ARCH
+  window_size: number;
+  aggression: number;
+  enable_tta: boolean;
+  enable_post_process: boolean;
+  post_process_threshold: number;
+  high_end_process: boolean;
+
+  // Demucs
+  shifts: number;
+  segments_enabled: boolean;
 }
 
 export interface InstallUrlForm {
@@ -70,4 +109,12 @@ export const SCALES = [
   "chromatic", "major", "minor", "dorian", "phrygian", "lydian",
   "mixolydian", "harmonic_minor", "melodic_minor",
   "pentatonic_major", "pentatonic_minor", "blues",
+];
+
+export const UVR_ARCHS: { key: UvrArch; label: string }[] = [
+  { key: "roformer", label: "Roformer" },
+  { key: "mdx23c", label: "MDX23C" },
+  { key: "mdx", label: "MDX-NET" },
+  { key: "vr", label: "VR ARCH" },
+  { key: "demucs", label: "Demucs" },
 ];

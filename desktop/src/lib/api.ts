@@ -7,6 +7,9 @@ import {
   backendReady,
   models,
   edgeVoices,
+  uvrModels,
+  uvrFormats,
+  uvrStems,
   currentJob,
   currentJobId,
   jobRunning,
@@ -15,6 +18,7 @@ import {
   toasts,
   rvcForm,
   ttsForm,
+  uvrForm,
 } from "./state";
 
 let eventSource: EventSource | null = null;
@@ -73,6 +77,63 @@ export async function loadEdgeVoices(): Promise<void> {
   }
 }
 
+export async function loadUvrModels(): Promise<void> {
+  const url = get(backendUrl);
+  if (!url) return;
+  try {
+    const r = await fetch(`${url}/uvr/models`);
+    const data = await r.json();
+    const allModels: Record<string, string[]> = data.models ?? {};
+    uvrModels.set(allModels);
+
+    // Устанавливаем модель по умолчанию если не выбрана
+    uvrForm.update((f) => {
+      const archModels = allModels[f.arch] ?? [];
+      if (!f.model_key || !archModels.includes(f.model_key)) {
+        f.model_key = archModels[0] ?? "";
+      }
+      return f;
+    });
+  } catch (e) {
+    logs.append(`[API] loadUvrModels: ${e}`);
+  }
+}
+
+export async function loadUvrFormats(): Promise<void> {
+  const url = get(backendUrl);
+  if (!url) return;
+  try {
+    const r = await fetch(`${url}/uvr/formats`);
+    const data = await r.json();
+    const formats: string[] = Array.isArray(data.formats) ? data.formats : [];
+    if (formats.length) uvrFormats.set(formats);
+  } catch (e) {
+    logs.append(`[API] loadUvrFormats: ${e}`);
+  }
+}
+
+export async function clearUvrModels(modelDir: string): Promise<void> {
+  const url = get(backendUrl);
+  if (!url) return;
+  try {
+    const r = await fetch(`${url}/uvr/models/clear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model_dir: modelDir }),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      toasts.show(data.message ?? "Модели очищены");
+      logs.append(`[UVR] ${data.message}`);
+    } else {
+      toasts.show(`Ошибка: ${data.detail ?? r.status}`);
+    }
+  } catch (e) {
+    logs.append(`[API] clearUvrModels: ${e}`);
+    toasts.show(`Ошибка: ${e}`);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Health check
 // ═══════════════════════════════════════════════════════════════
@@ -90,23 +151,14 @@ async function checkHealth(url: string): Promise<boolean> {
 // Backend connection
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * Главная функция — вызывается при старте main окна.
- *
- * 1. Просит Rust гарантировать что backend запущен (ensure_backend_running)
- * 2. Ждёт пока backend ответит на /health
- */
 export async function connectBackend(): Promise<boolean> {
-  // Шаг 1: Просим Rust запустить backend если он не запущен
   logs.append("[UI] Запуск backend...");
   try {
     await invoke("ensure_backend_running");
   } catch (e) {
     logs.append(`[UI] ensure_backend_running: ${e}`);
-    // Не fatal — может python ещё не установлен, попробуем подождать
   }
 
-  // Шаг 2: Ждём пока backend ответит (до 60 сек)
   for (let i = 0; i < 120; i++) {
     const url = await invoke<string | null>("backend_get_url");
     if (typeof url === "string" && url.startsWith("http")) {
@@ -116,6 +168,8 @@ export async function connectBackend(): Promise<boolean> {
         logs.append(`[UI] Backend готов: ${url}`);
         await loadModels();
         await loadEdgeVoices();
+        await loadUvrModels();
+        await loadUvrFormats();
         return true;
       }
     }
@@ -127,17 +181,14 @@ export async function connectBackend(): Promise<boolean> {
   return false;
 }
 
-/**
- * Обновление данных / переподключение.
- * Если backend жив — обновляет списки.
- * Если мёртв — перезапускает.
- */
 export async function refreshAll(): Promise<void> {
   const url = get(backendUrl);
 
   if (url && await checkHealth(url)) {
     await loadModels();
     await loadEdgeVoices();
+    await loadUvrModels();
+    await loadUvrFormats();
     logs.append("[UI] Данные обновлены.");
     toasts.show("Данные обновлены");
     return;
@@ -256,8 +307,15 @@ async function waitForJobCompletion(jobId: string): Promise<void> {
       const r = await fetch(`${url}/jobs/${jobId}`);
       const data = (await r.json()) as JobSnapshot;
       currentJob.set(data);
-      if (data.status === "done" && data.result?.output_path) {
-        playerPath.set(data.result.output_path);
+      if (data.status === "done") {
+        // RVC/TTS: output_path → player
+        if (data.result?.output_path) {
+          playerPath.set(data.result.output_path);
+        }
+        // UVR: stems → uvrStems store
+        if (data.result?.stems) {
+          uvrStems.set(data.result.stems);
+        }
       }
     } catch {}
   }
@@ -275,6 +333,7 @@ export async function postJob(endpoint: string, body: Record<string, any>): Prom
 
   jobRunning.set(true);
   playerPath.set(null);
+  uvrStems.set([]);
   currentJob.set({ job_id: "-", status: "running", progress: 0, message: "Запуск...", result: null, error: null });
 
   try {

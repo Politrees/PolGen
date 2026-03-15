@@ -13,6 +13,7 @@
 
   import RvcTab from "./tabs/RvcTab.svelte";
   import TtsTab from "./tabs/TtsTab.svelte";
+  import UvrTab from "./tabs/UvrTab.svelte";
   import ModelsTab from "./tabs/ModelsTab.svelte";
 
   let connecting = true;
@@ -110,6 +111,8 @@
           <RvcTab />
         {:else if $activeTab === "tts"}
           <TtsTab />
+        {:else if $activeTab === "uvr"}
+          <UvrTab />
         {:else}
           <ModelsTab />
         {/if}

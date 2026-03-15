@@ -1,13 +1,17 @@
-import gc
-import logging
 import os
-import re
-import shutil
-import subprocess
 import sys
 
 import gradio as gr
-import torch
+
+from rvc.modules.uvr_core import (
+    separate_roformer,
+    separate_mdx23c,
+    separate_mdx,
+    separate_vr,
+    separate_demucs,
+    clear_models,
+    get_leaderboard,
+)
 from UVR_resources import (
     FORMATS,
     MDX23C_MODELS,
@@ -18,11 +22,10 @@ from UVR_resources import (
     DEMUCS_v4_MODELS,
 )
 
-from PolUVR.separator import Separator
 
-# Constants
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-USE_AUTOCAST = DEVICE == "cuda"
+# ═══════════════════════════════════════════════════════════════
+# Gradio UI helpers
+# ═══════════════════════════════════════════════════════════════
 
 
 def reset_stems():
@@ -30,56 +33,9 @@ def reset_stems():
     return [gr.update(value=None, visible=False) for _ in range(6)]
 
 
-def print_process_info(input_file, model_name):
-    """Prints information about the audio separation process."""
-    base_name = os.path.splitext(os.path.basename(input_file))[0]
-    print("\n🎵 PolUVR 🎵")
-    print(f"Input file: {base_name}")
-    print(f"Model used: {model_name}")
-    print("Audio separation in progress...")
-
-
-def prepare_output_directory(input_file, output_directory):
-    """Creates a directory to save the results and clears it if it exists."""
-    base_name = os.path.splitext(os.path.basename(input_file))[0]
-    output_dir = os.path.join(output_directory, base_name)
-
-    try:
-        if os.path.exists(output_dir):
-            shutil.rmtree(output_dir)
-        os.makedirs(output_dir)
-    except Exception as e:
-        raise gr.Error(f"Error creating output directory {output_dir}: {e}") from e
-
-    return output_dir
-
-
-def generate_stem_names(audio_path, name_template, model_name):
-    """Generates stem names based on the template."""
-    base_name = os.path.splitext(os.path.basename(audio_path))[0]
-    return {"All Stems": name_template.replace("NAME", base_name).replace("STEM", "All Stems").replace("MODEL", model_name)}
-
-
-def show_hide_parameter(visible):
-    """Updates the visibility of a parameter based on checkbox state."""
-    return gr.update(visible=visible)
-
-
-def clear_model_files(model_dir):
-    """Deletes all model files from the specified directory."""
-    try:
-        for filename in os.listdir(model_dir):
-            if filename.endswith((".th", ".pth", ".onnx", ".ckpt", ".json", ".yaml")):
-                file_path = os.path.join(model_dir, filename)
-                os.remove(file_path)
-        return gr.Info("Models successfully cleared from memory.")
-    except Exception as e:
-        raise gr.Error(f"Error deleting models: {e}")
-
-
-def process_separation_results(separation_results, output_dir):
+def process_separation_results(out_dir, separation_results):
     """Process separation results and prepare outputs for UI components."""
-    stems = [os.path.join(output_dir, file_name) for file_name in separation_results]
+    stems = [os.path.join(out_dir, file_name) for file_name in separation_results]
 
     outputs = []
     for i in range(6):
@@ -102,254 +58,109 @@ def create_stems_display():
     return stems
 
 
+def show_hide_parameter(visible):
+    """Updates the visibility of a parameter based on checkbox state."""
+    return gr.update(visible=visible)
+
+
+def clear_model_files(model_dir):
+    """Deletes all model files from the specified directory."""
+    try:
+        msg = clear_models(model_dir)
+        return gr.Info(msg)
+    except Exception as e:
+        raise gr.Error(f"Error deleting models: {e}")
+
+
 def display_leaderboard(list_filter, list_limit):
     """Displays the model leaderboard."""
-    try:
-        result = subprocess.run(
-            ["PolUVR", "-l", f"--list_filter={list_filter}", f"--list_limit={list_limit}"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+    return get_leaderboard(list_filter, list_limit)
 
-        if result.returncode != 0:
-            return f"Error: {result.stderr}"
 
-        return "<table border='1'>" + "".join(
-            f"<tr style='{'font-weight: bold; font-size: 1.2em;' if i == 0 else ''}'>" +
-            "".join(f"<td>{cell}</td>" for cell in re.split(r"\s{2,}", line.strip())) +
-            "</tr>"
-            for i, line in enumerate(re.findall(r"^(?!-+)(.+)$", result.stdout.strip(), re.MULTILINE))
-        ) + "</table>"
-
-    except Exception as e:
-        return f"Error: {e}"
+# ═══════════════════════════════════════════════════════════════
+# Gradio-обёртки над core-функциями сепарации
+# ═══════════════════════════════════════════════════════════════
 
 
 def run_roformer_separation(audio_path, model_key, segment_size, override_segment_size, overlap, pitch_shift, model_dir, output_dir, output_format, norm_threshold, amp_threshold, batch_size, rename_template, progress=gr.Progress(track_tqdm=True)):
     """Performs audio separation using the Roformer model."""
     try:
         yield reset_stems()
-
-        print_process_info(audio_path, model_key)
-
-        out_dir = prepare_output_directory(audio_path, output_dir)
-        stem_names = generate_stem_names(audio_path, rename_template, model_key)
-
-        model_filename = ROFORMER_MODELS[model_key]
-        separator = Separator(
-            log_level=logging.WARNING,
-            model_file_dir=model_dir,
-            output_dir=out_dir,
-            output_format=output_format,
-            normalization_threshold=norm_threshold,
-            amplification_threshold=amp_threshold,
-            use_autocast=USE_AUTOCAST,
-            mdxc_params={
-                "segment_size": segment_size,
-                "override_model_segment_size": override_segment_size,
-                "batch_size": batch_size,
-                "overlap": overlap,
-                "pitch_shift": pitch_shift,
-            },
+        out_dir, results = separate_roformer(
+            audio_path, model_key, segment_size, override_segment_size,
+            overlap, pitch_shift, model_dir, output_dir, output_format,
+            norm_threshold, amp_threshold, batch_size, rename_template,
+            progress=progress,
         )
-
-        progress(0.2, desc="Model loading...")
-        separator.load_model(model_filename=model_filename)
-
-        progress(0.7, desc="Audio separation...")
-        results = separator.separate(audio_path, stem_names)
-        print(f"Separation complete!\nResults: {', '.join(results)}")
-
-        yield process_separation_results(results, out_dir)
+        yield process_separation_results(out_dir, results)
     except Exception as e:
         raise gr.Error(f"Error separating audio with Roformer: {e}") from e
-    finally:
-        del separator
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        torch.mps.empty_cache() if torch.backends.mps.is_available() else None
-        gc.collect()
 
 
 def run_mdx23c_separation(audio_path, model_key, segment_size, override_segment_size, overlap, pitch_shift, model_dir, output_dir, output_format, norm_threshold, amp_threshold, batch_size, rename_template, progress=gr.Progress(track_tqdm=True)):
     """Performs audio separation using the MDX23C model."""
     try:
         yield reset_stems()
-
-        print_process_info(audio_path, model_key)
-
-        out_dir = prepare_output_directory(audio_path, output_dir)
-        stem_names = generate_stem_names(audio_path, rename_template, model_key)
-
-        model_filename = MDX23C_MODELS[model_key]
-        separator = Separator(
-            log_level=logging.WARNING,
-            model_file_dir=model_dir,
-            output_dir=out_dir,
-            output_format=output_format,
-            normalization_threshold=norm_threshold,
-            amplification_threshold=amp_threshold,
-            use_autocast=USE_AUTOCAST,
-            mdxc_params={
-                "segment_size": segment_size,
-                "override_model_segment_size": override_segment_size,
-                "batch_size": batch_size,
-                "overlap": overlap,
-                "pitch_shift": pitch_shift,
-            },
+        out_dir, results = separate_mdx23c(
+            audio_path, model_key, segment_size, override_segment_size,
+            overlap, pitch_shift, model_dir, output_dir, output_format,
+            norm_threshold, amp_threshold, batch_size, rename_template,
+            progress=progress,
         )
-
-        progress(0.2, desc="Model loading...")
-        separator.load_model(model_filename=model_filename)
-
-        progress(0.7, desc="Audio separation...")
-        results = separator.separate(audio_path, stem_names)
-        print(f"Separation complete!\nResults: {', '.join(results)}")
-
-        yield process_separation_results(results, out_dir)
+        yield process_separation_results(out_dir, results)
     except Exception as e:
         raise gr.Error(f"Error separating audio with MDX23C: {e}") from e
-    finally:
-        del separator
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        torch.mps.empty_cache() if torch.backends.mps.is_available() else None
-        gc.collect()
 
 
 def run_mdx_separation(audio_path, model_key, hop_length, segment_size, overlap, denoise, model_dir, output_dir, output_format, norm_threshold, amp_threshold, batch_size, rename_template, progress=gr.Progress(track_tqdm=True)):
     """Performs audio separation using the MDX-NET model."""
     try:
         yield reset_stems()
-
-        print_process_info(audio_path, model_key)
-
-        out_dir = prepare_output_directory(audio_path, output_dir)
-        stem_names = generate_stem_names(audio_path, rename_template, model_key)
-
-        model_filename = MDXNET_MODELS[model_key]
-        separator = Separator(
-            log_level=logging.WARNING,
-            model_file_dir=model_dir,
-            output_dir=out_dir,
-            output_format=output_format,
-            normalization_threshold=norm_threshold,
-            amplification_threshold=amp_threshold,
-            use_autocast=USE_AUTOCAST,
-            mdx_params={
-                "hop_length": hop_length,
-                "segment_size": segment_size,
-                "overlap": overlap,
-                "batch_size": batch_size,
-                "enable_denoise": denoise,
-            },
+        out_dir, results = separate_mdx(
+            audio_path, model_key, hop_length, segment_size, overlap,
+            denoise, model_dir, output_dir, output_format,
+            norm_threshold, amp_threshold, batch_size, rename_template,
+            progress=progress,
         )
-
-        progress(0.2, desc="Model loading...")
-        separator.load_model(model_filename=model_filename)
-
-        progress(0.7, desc="Audio separation...")
-        results = separator.separate(audio_path, stem_names)
-        print(f"Separation complete!\nResults: {', '.join(results)}")
-
-        yield process_separation_results(results, out_dir)
+        yield process_separation_results(out_dir, results)
     except Exception as e:
         raise gr.Error(f"Error separating audio with MDX-NET: {e}") from e
-    finally:
-        del separator
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        torch.mps.empty_cache() if torch.backends.mps.is_available() else None
-        gc.collect()
 
 
 def run_vr_separation(audio_path, model_key, window_size, aggression, enable_tta, enable_post_process, post_process_threshold, high_end_process, model_dir, output_dir, output_format, norm_threshold, amp_threshold, batch_size, rename_template, progress=gr.Progress(track_tqdm=True)):
     """Performs audio separation using the VR ARCH model."""
     try:
         yield reset_stems()
-
-        print_process_info(audio_path, model_key)
-
-        out_dir = prepare_output_directory(audio_path, output_dir)
-        stem_names = generate_stem_names(audio_path, rename_template, model_key)
-
-        model_filename = VR_ARCH_MODELS[model_key]
-        separator = Separator(
-            log_level=logging.WARNING,
-            model_file_dir=model_dir,
-            output_dir=out_dir,
-            output_format=output_format,
-            normalization_threshold=norm_threshold,
-            amplification_threshold=amp_threshold,
-            use_autocast=USE_AUTOCAST,
-            vr_params={
-                "batch_size": batch_size,
-                "window_size": window_size,
-                "aggression": aggression,
-                "enable_tta": enable_tta,
-                "enable_post_process": enable_post_process,
-                "post_process_threshold": post_process_threshold,
-                "high_end_process": high_end_process,
-            },
+        out_dir, results = separate_vr(
+            audio_path, model_key, window_size, aggression, enable_tta,
+            enable_post_process, post_process_threshold, high_end_process,
+            model_dir, output_dir, output_format,
+            norm_threshold, amp_threshold, batch_size, rename_template,
+            progress=progress,
         )
-
-        progress(0.2, desc="Model loading...")
-        separator.load_model(model_filename=model_filename)
-
-        progress(0.7, desc="Audio separation...")
-        results = separator.separate(audio_path, stem_names)
-        print(f"Separation complete!\nResults: {', '.join(results)}")
-
-        yield process_separation_results(results, out_dir)
+        yield process_separation_results(out_dir, results)
     except Exception as e:
         raise gr.Error(f"Error separating audio with VR ARCH: {e}") from e
-    finally:
-        del separator
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        torch.mps.empty_cache() if torch.backends.mps.is_available() else None
-        gc.collect()
 
 
 def run_demucs_separation(audio_path, model_key, segment_size, shifts, overlap, segments_enabled, model_dir, output_dir, output_format, norm_threshold, amp_threshold, rename_template, progress=gr.Progress(track_tqdm=True)):
     """Performs audio separation using the Demucs model."""
     try:
         yield reset_stems()
-
-        print_process_info(audio_path, model_key)
-
-        out_dir = prepare_output_directory(audio_path, output_dir)
-        stem_names = generate_stem_names(audio_path, rename_template, model_key)
-
-        model_filename = DEMUCS_v4_MODELS[model_key]
-        separator = Separator(
-            log_level=logging.WARNING,
-            model_file_dir=model_dir,
-            output_dir=out_dir,
-            output_format=output_format,
-            normalization_threshold=norm_threshold,
-            amplification_threshold=amp_threshold,
-            use_autocast=USE_AUTOCAST,
-            demucs_params={
-                "segment_size": segment_size,
-                "shifts": shifts,
-                "overlap": overlap,
-                "segments_enabled": segments_enabled,
-            },
+        out_dir, results = separate_demucs(
+            audio_path, model_key, segment_size, shifts, overlap,
+            segments_enabled, model_dir, output_dir, output_format,
+            norm_threshold, amp_threshold, rename_template,
+            progress=progress,
         )
-
-        progress(0.2, desc="Model loading...")
-        separator.load_model(model_filename=model_filename)
-
-        progress(0.7, desc="Audio separation...")
-        results = separator.separate(audio_path, stem_names)
-        print(f"Separation complete!\nResults: {', '.join(results)}")
-
-        yield process_separation_results(results, out_dir)
+        yield process_separation_results(out_dir, results)
     except Exception as e:
         raise gr.Error(f"Error separating audio with Demucs: {e}") from e
-    finally:
-        del separator
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        torch.mps.empty_cache() if torch.backends.mps.is_available() else None
-        gc.collect()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Gradio UI
+# ═══════════════════════════════════════════════════════════════
 
 
 def PolUVR_UI(model_dir="/tmp/PolUVR-models/", output_dir="output"):
@@ -535,19 +346,10 @@ def PolUVR_UI(model_dir="/tmp/PolUVR-models/", output_dir="output"):
     roformer_button.click(
         run_roformer_separation,
         inputs=[
-            roformer_audio,
-            roformer_model,
-            roformer_seg_size,
-            roformer_override_seg_size,
-            roformer_overlap,
-            roformer_pitch_shift,
-            model_file_dir,
-            output_dir,
-            roformer_output_format,
-            roformer_norm_threshold,
-            roformer_amp_threshold,
-            roformer_batch_size,
-            rename_stems,
+            roformer_audio, roformer_model, roformer_seg_size, roformer_override_seg_size,
+            roformer_overlap, roformer_pitch_shift, model_file_dir, output_dir,
+            roformer_output_format, roformer_norm_threshold, roformer_amp_threshold,
+            roformer_batch_size, rename_stems,
         ],
         outputs=roformer_stems,
         show_progress_on=roformer_audio,
@@ -556,19 +358,10 @@ def PolUVR_UI(model_dir="/tmp/PolUVR-models/", output_dir="output"):
     mdx23c_button.click(
         run_mdx23c_separation,
         inputs=[
-            mdx23c_audio,
-            mdx23c_model,
-            mdx23c_seg_size,
-            mdx23c_override_seg_size,
-            mdx23c_overlap,
-            mdx23c_pitch_shift,
-            model_file_dir,
-            output_dir,
-            mdx23c_output_format,
-            mdx23c_norm_threshold,
-            mdx23c_amp_threshold,
-            mdx23c_batch_size,
-            rename_stems,
+            mdx23c_audio, mdx23c_model, mdx23c_seg_size, mdx23c_override_seg_size,
+            mdx23c_overlap, mdx23c_pitch_shift, model_file_dir, output_dir,
+            mdx23c_output_format, mdx23c_norm_threshold, mdx23c_amp_threshold,
+            mdx23c_batch_size, rename_stems,
         ],
         outputs=mdx23c_stems,
         show_progress_on=mdx23c_audio,
@@ -577,19 +370,9 @@ def PolUVR_UI(model_dir="/tmp/PolUVR-models/", output_dir="output"):
     mdx_button.click(
         run_mdx_separation,
         inputs=[
-            mdx_audio,
-            mdx_model,
-            mdx_hop_length,
-            mdx_seg_size,
-            mdx_overlap,
-            mdx_denoise,
-            model_file_dir,
-            output_dir,
-            mdx_output_format,
-            mdx_norm_threshold,
-            mdx_amp_threshold,
-            mdx_batch_size,
-            rename_stems,
+            mdx_audio, mdx_model, mdx_hop_length, mdx_seg_size, mdx_overlap,
+            mdx_denoise, model_file_dir, output_dir, mdx_output_format,
+            mdx_norm_threshold, mdx_amp_threshold, mdx_batch_size, rename_stems,
         ],
         outputs=mdx_stems,
         show_progress_on=mdx_audio,
@@ -598,21 +381,10 @@ def PolUVR_UI(model_dir="/tmp/PolUVR-models/", output_dir="output"):
     vr_button.click(
         run_vr_separation,
         inputs=[
-            vr_audio,
-            vr_model,
-            vr_window_size,
-            vr_aggression,
-            vr_tta,
-            vr_post_process,
-            vr_post_process_threshold,
-            vr_high_end_process,
-            model_file_dir,
-            output_dir,
-            vr_output_format,
-            vr_norm_threshold,
-            vr_amp_threshold,
-            vr_batch_size,
-            rename_stems,
+            vr_audio, vr_model, vr_window_size, vr_aggression, vr_tta,
+            vr_post_process, vr_post_process_threshold, vr_high_end_process,
+            model_file_dir, output_dir, vr_output_format, vr_norm_threshold,
+            vr_amp_threshold, vr_batch_size, rename_stems,
         ],
         outputs=vr_stems,
         show_progress_on=vr_audio,
@@ -621,17 +393,9 @@ def PolUVR_UI(model_dir="/tmp/PolUVR-models/", output_dir="output"):
     demucs_button.click(
         run_demucs_separation,
         inputs=[
-            demucs_audio,
-            demucs_model,
-            demucs_seg_size,
-            demucs_shifts,
-            demucs_overlap,
-            demucs_segments_enabled,
-            model_file_dir,
-            output_dir,
-            demucs_output_format,
-            demucs_norm_threshold,
-            demucs_amp_threshold,
+            demucs_audio, demucs_model, demucs_seg_size, demucs_shifts,
+            demucs_overlap, demucs_segments_enabled, model_file_dir, output_dir,
+            demucs_output_format, demucs_norm_threshold, demucs_amp_threshold,
             rename_stems,
         ],
         outputs=demucs_stems,
