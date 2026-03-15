@@ -3,16 +3,18 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "skipLibCheck": true,
-
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
     "isolatedModules": true,
     "noEmit": true,
-
     "strict": true,
-    "types": ["vite/client"]
+    "skipLibCheck": true,
+    "paths": {
+      "$lib/*": ["./src/lib/*"]
+    },
+    "types": ["svelte", "vite/client"]
   },
-  "include": ["src"]
+  "include": ["src/**/*.ts", "src/**/*.svelte"]
 }

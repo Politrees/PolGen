@@ -59,6 +59,11 @@ def download_and_replace_model(model_name, custom_url, progress=gr.Progress()):
             os.remove(HUBERT_BASE_PATH)
 
         os.rename(tmp_model_path, HUBERT_BASE_PATH)
+
+        # Сбрасываем кеш HuBERT чтобы при следующем инференсе загрузилась новая модель
+        from rvc.infer.infer import get_model_cache
+        get_model_cache().invalidate_hubert()
+
         return f'Модель "{model_name}" успешно установлена.'
     except Exception as e:
         return f'Ошибка при установке модели "{model_name}": {e!s}'

@@ -42,7 +42,16 @@ struct SetupLogEvent { line: String }
 struct SetupDoneEvent { success: bool, message: String }
 
 #[derive(Serialize, Clone)]
-struct PlatformInfo { os: String, has_nvidia: bool, recommended_url: String, all_variants: Vec<EnvVariant> }
+struct PlatformInfo {
+    os: String,
+    has_nvidia: bool,
+    gpu_name: String,
+    gpu_vram_mb: u64,
+    gpu_cuda_capable: bool,
+    cuda_reason: String,
+    recommended_url: String,
+    all_variants: Vec<EnvVariant>,
+}
 
 #[derive(Serialize, Clone)]
 struct EnvVariant { label: String, url: String, description: String }
@@ -66,20 +75,15 @@ fn file_exists(p: &Path) -> bool { fs::metadata(p).is_ok() }
 fn dir_exists(p: &Path) -> bool { fs::metadata(p).map(|m| m.is_dir()).unwrap_or(false) }
 
 fn find_project_root() -> Option<PathBuf> {
-    // 1. Переменная окружения
     if let Ok(root) = std::env::var("POLGEN_ROOT") {
         let p = PathBuf::from(&root);
         if file_exists(&p.join("app.py")) { return Some(p); }
     }
-
-    // 2. Кандидаты: cwd + exe dir
     let mut candidates: Vec<PathBuf> = vec![];
     if let Ok(cd) = std::env::current_dir() { candidates.push(cd); }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(p) = exe.parent() { candidates.push(p.to_path_buf()); }
     }
-
-    // 3. Вверх до 8 уровней от каждого кандидата
     let mut expanded: Vec<PathBuf> = vec![];
     for c in &candidates {
         let mut cur = c.clone();
@@ -91,27 +95,21 @@ fn find_project_root() -> Option<PathBuf> {
             }
         }
     }
-
-    // 4. Ищем маркеры: app.py + rvc/ (models/ может не существовать при первом запуске)
     for base in &expanded {
-        let has_app = file_exists(&base.join("app.py"));
-        let has_rvc = dir_exists(&base.join("rvc"));
-        if has_app && has_rvc {
+        if file_exists(&base.join("app.py")) && dir_exists(&base.join("rvc")) {
             return Some(base.clone());
         }
     }
-
     None
 }
 
 fn ensure_dirs(root: &Path) {
-    let dirs = [
+    for d in &[
         root.join("models"),
         root.join("models").join("RVC_models"),
         root.join("output"),
         root.join("output").join("RVC_output"),
-    ];
-    for d in &dirs {
+    ] {
         let _ = fs::create_dir_all(d);
     }
 }
@@ -165,10 +163,99 @@ fn format_eta(secs: f64) -> String {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Cleanup — удаление недокачанных файлов
+// ═══════════════════════════════════════════════════════════════
+
+fn cleanup_partial_install(root: &Path) {
+    // Удаляем временный ZIP
+    let zip_path = root.join("_polgen_env_download.zip");
+    if file_exists(&zip_path) {
+        println!("[cleanup] Удаляю {}", zip_path.display());
+        let _ = fs::remove_file(&zip_path);
+    }
+
+    // Удаляем частично распакованный env/ (только если python не найден — значит env битый)
+    let env_dir = root.join("env");
+    if dir_exists(&env_dir) && find_python(root).is_none() {
+        println!("[cleanup] Удаляю неполный env/: {}", env_dir.display());
+        let _ = fs::remove_dir_all(&env_dir);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Kill all Python processes related to PolGen
+// ═══════════════════════════════════════════════════════════════
+
+fn kill_backend_tree(state: &BackendState) {
+    if let Some(mut child) = state.child.lock().unwrap().take() {
+        let pid = child.id();
+        println!("[kill] Завершаю backend PID {pid}");
+        #[cfg(target_os = "windows")]
+        {
+            let _ = Command::new("taskkill")
+                .args(["/PID", &pid.to_string(), "/T", "/F"])
+                .stdout(Stdio::null()).stderr(Stdio::null()).status();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = child.kill();
+        }
+        let _ = child.wait();
+    }
+}
+
+/// Убивает ВСЕ python-процессы, связанные с PolGen (desktop.backend, polgen_backend, model_installer)
+fn kill_all_polgen_python() {
+    #[cfg(target_os = "windows")]
+    {
+        // Убиваем все python.exe чья командная строка содержит desktop.backend, polgen_backend или assets.model_installer
+        let patterns = [
+            "desktop.backend",
+            "polgen_backend",
+            "assets.model_installer",
+        ];
+        for pattern in &patterns {
+            let script = format!(
+                r#"Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Where-Object {{ $_.CommandLine -match "{}" }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"#,
+                pattern.replace('.', r"\.")
+            );
+            let _ = Command::new("powershell")
+                .args(["-NoProfile", "-Command", &script])
+                .stdout(Stdio::null()).stderr(Stdio::null()).status();
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        for pattern in &["desktop.backend", "polgen_backend", "assets.model_installer"] {
+            let _ = Command::new("pkill")
+                .args(["-f", pattern])
+                .stdout(Stdio::null()).stderr(Stdio::null()).status();
+        }
+    }
+}
+
+fn kill_everything(state: &BackendState) {
+    kill_backend_tree(state);
+    kill_all_polgen_python();
+}
+
+fn open_path_in_explorer(path: &str) -> Result<(), String> {
+    if path.trim().is_empty() { return Err("path пустой".into()); }
+    let r = if cfg!(target_os = "windows") { Command::new("explorer").arg(path).spawn() }
+    else if cfg!(target_os = "macos") { Command::new("open").arg(path).spawn() }
+    else { Command::new("xdg-open").arg(path).spawn() };
+    r.map(|_| ()).map_err(|e| format!("{e}"))
+}
+
+fn is_safe_model_name(name: &str) -> bool {
+    !name.is_empty() && !name.contains("..") && !name.contains('/') && !name.contains('\\')
+}
+
+// ═══════════════════════════════════════════════════════════════
 // HTTP download
 // ═══════════════════════════════════════════════════════════════
 
-fn download_file_with_progress(url: &str, dst: &Path, handle: &tauri::AppHandle, label: &str) -> Result<(), String> {
+fn download_file_with_progress(url: &str, dst: &Path, handle: &tauri::AppHandle, label: &str, cancel_flag: &AtomicBool) -> Result<(), String> {
     let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("Скачивание {label}: {url}") });
     let resp = ureq::get(url).call().map_err(|e| format!("HTTP: {e}"))?;
     let total: u64 = resp.header("content-length").and_then(|s| s.parse().ok()).unwrap_or(0);
@@ -183,6 +270,12 @@ fn download_file_with_progress(url: &str, dst: &Path, handle: &tauri::AppHandle,
     let mut last_report = Instant::now();
 
     loop {
+        // Проверяем отмену
+        if !cancel_flag.load(Ordering::SeqCst) {
+            let _ = fs::remove_file(dst);
+            return Err("Скачивание отменено".into());
+        }
+
         let n = reader.read(&mut buf).map_err(|e| format!("read: {e}"))?;
         if n == 0 { break; }
         file.write_all(&buf[..n]).map_err(|e| format!("write: {e}"))?;
@@ -212,7 +305,7 @@ fn download_file_with_progress(url: &str, dst: &Path, handle: &tauri::AppHandle,
 fn spawn_backend(root: &Path, state: &BackendState) -> Result<(), String> {
     let python = find_python(root).ok_or_else(|| "Python не найден".to_string())?;
     let mut cmd = Command::new(&python);
-    cmd.current_dir(root).args(["-m", "polgen_backend", "--host", "127.0.0.1", "--port", "0"])
+    cmd.current_dir(root).args(["-m", "desktop.backend", "--host", "127.0.0.1", "--port", "0"])
        .env("PYTHONUTF8", "1").env("PYTHONIOENCODING", "utf-8")
        .stdout(Stdio::piped()).stderr(Stdio::piped());
     #[cfg(target_os = "windows")] { use std::os::windows::process::CommandExt; cmd.creation_flags(0x08000000); }
@@ -221,45 +314,27 @@ fn spawn_backend(root: &Path, state: &BackendState) -> Result<(), String> {
     let stderr = child.stderr.take().ok_or("no stderr")?;
     *state.child.lock().unwrap() = Some(child);
     let url_arc = state.url.clone();
-    std::thread::spawn(move || { for line in BufReader::new(stdout).lines().flatten() { println!("[backend] {line}"); if let Some(url) = line.strip_prefix("POLGEN_BACKEND_READY ") { *url_arc.lock().unwrap() = Some(url.trim().to_string()); } } });
-    std::thread::spawn(move || { for line in BufReader::new(stderr).lines().flatten() { eprintln!("[backend err] {line}"); } });
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().flatten() {
+            println!("[backend] {line}");
+            if let Some(url) = line.strip_prefix("POLGEN_BACKEND_READY ") {
+                *url_arc.lock().unwrap() = Some(url.trim().to_string());
+            }
+        }
+    });
+    std::thread::spawn(move || {
+        for line in BufReader::new(stderr).lines().flatten() {
+            eprintln!("[backend err] {line}");
+        }
+    });
     Ok(())
 }
 
-fn kill_backend_tree(state: &BackendState) {
-    if let Some(mut child) = state.child.lock().unwrap().take() {
-        #[cfg(target_os = "windows")] { let _ = Command::new("taskkill").args(["/PID", &child.id().to_string(), "/T", "/F"]).stdout(Stdio::null()).stderr(Stdio::null()).status(); }
-        #[cfg(not(target_os = "windows"))] { let _ = child.kill(); }
-        let _ = child.wait();
-    }
-}
-
-fn kill_orphan_polgen_python() {
-    #[cfg(target_os = "windows")] {
-        let _ = Command::new("powershell").args(["-NoProfile", "-Command",
-            r#"Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Where-Object { $_.CommandLine -match "polgen_backend" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"#
-        ]).stdout(Stdio::null()).stderr(Stdio::null()).status();
-    }
-    #[cfg(not(target_os = "windows"))] { let _ = Command::new("pkill").args(["-f", "polgen_backend"]).stdout(Stdio::null()).stderr(Stdio::null()).status(); }
-}
-
-fn kill_backend_and_orphans(state: &BackendState) { kill_backend_tree(state); kill_orphan_polgen_python(); }
-
-fn open_path_in_explorer(path: &str) -> Result<(), String> {
-    if path.trim().is_empty() { return Err("path пустой".into()); }
-    let r = if cfg!(target_os = "windows") { Command::new("explorer").arg(path).spawn() }
-    else if cfg!(target_os = "macos") { Command::new("open").arg(path).spawn() }
-    else { Command::new("xdg-open").arg(path).spawn() };
-    r.map(|_| ()).map_err(|e| format!("{e}"))
-}
-
-fn is_safe_model_name(name: &str) -> bool { !name.is_empty() && !name.contains("..") && !name.contains('/') && !name.contains('\\') }
-
 // ═══════════════════════════════════════════════════════════════
-// Post-install
+// Post-install helpers
 // ═══════════════════════════════════════════════════════════════
 
-fn install_ffmpeg(root: &Path, handle: &tauri::AppHandle) -> Result<(), String> {
+fn install_ffmpeg(root: &Path, handle: &tauri::AppHandle, cancel_flag: &AtomicBool) -> Result<(), String> {
     if cfg!(target_os = "windows") {
         let ffmpeg = root.join("ffmpeg.exe");
         let ffprobe = root.join("ffprobe.exe");
@@ -268,8 +343,12 @@ fn install_ffmpeg(root: &Path, handle: &tauri::AppHandle) -> Result<(), String> 
             return Ok(());
         }
         let base = "https://huggingface.co/Politrees/RVC_resources/resolve/main/tools/ffmpeg";
-        if !file_exists(&ffmpeg) { download_file_with_progress(&format!("{base}/ffmpeg.exe?download=true"), &ffmpeg, handle, "ffmpeg.exe")?; }
-        if !file_exists(&ffprobe) { download_file_with_progress(&format!("{base}/ffprobe.exe?download=true"), &ffprobe, handle, "ffprobe.exe")?; }
+        if !file_exists(&ffmpeg) {
+            download_file_with_progress(&format!("{base}/ffmpeg.exe?download=true"), &ffmpeg, handle, "ffmpeg.exe", cancel_flag)?;
+        }
+        if !file_exists(&ffprobe) {
+            download_file_with_progress(&format!("{base}/ffprobe.exe?download=true"), &ffprobe, handle, "ffprobe.exe", cancel_flag)?;
+        }
     } else {
         let _ = handle.emit_all("setup-log", SetupLogEvent { line: "FFmpeg: системный.".into() });
     }
@@ -286,48 +365,28 @@ fn install_rvc_models(root: &Path, handle: &tauri::AppHandle) -> Result<(), Stri
 
     let mut cmd = Command::new(&python);
     cmd.current_dir(root)
-       .args([
-           "-c",
-           "from assets.model_installer import check_and_install_models; check_and_install_models(include_flashsr=True)",
-       ])
-       .env("PYTHONUTF8", "1")
-       .env("PYTHONIOENCODING", "utf-8")
-       .stdout(Stdio::piped())
-       .stderr(Stdio::piped());
-
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000);
-    }
+       .args(["-c", "from assets.model_installer import check_and_install_models; check_and_install_models(include_flashsr=False)"])
+       .env("PYTHONUTF8", "1").env("PYTHONIOENCODING", "utf-8")
+       .stdout(Stdio::piped()).stderr(Stdio::piped());
+    #[cfg(target_os = "windows")] { use std::os::windows::process::CommandExt; cmd.creation_flags(0x08000000); }
 
     let mut child = cmd.spawn().map_err(|e| format!("model_installer spawn: {e}"))?;
 
-    // stdout — tqdm пишет прогресс сюда
     if let Some(out) = child.stdout.take() {
         let h = handle.clone();
         std::thread::spawn(move || {
-            let reader = BufReader::new(out);
-            for line in reader.lines().flatten() {
-                // Фильтруем пустые строки и \r-прогрессбары tqdm
+            for line in BufReader::new(out).lines().flatten() {
                 let clean = line.trim().to_string();
-                if !clean.is_empty() {
-                    let _ = h.emit_all("setup-log", SetupLogEvent { line: clean });
-                }
+                if !clean.is_empty() { let _ = h.emit_all("setup-log", SetupLogEvent { line: clean }); }
             }
         });
     }
-
-    // stderr — tqdm часто пишет прогресс в stderr
     if let Some(err) = child.stderr.take() {
         let h = handle.clone();
         std::thread::spawn(move || {
-            let reader = BufReader::new(err);
-            for line in reader.lines().flatten() {
+            for line in BufReader::new(err).lines().flatten() {
                 let clean = line.trim().to_string();
-                if !clean.is_empty() {
-                    let _ = h.emit_all("setup-log", SetupLogEvent { line: clean });
-                }
+                if !clean.is_empty() { let _ = h.emit_all("setup-log", SetupLogEvent { line: clean }); }
             }
         });
     }
@@ -342,79 +401,23 @@ fn install_rvc_models(root: &Path, handle: &tauri::AppHandle) -> Result<(), Stri
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Tauri Commands
+// Full install flow
 // ═══════════════════════════════════════════════════════════════
 
-#[tauri::command]
-fn backend_get_url(state: tauri::State<BackendState>) -> Option<String> { state.url.lock().unwrap().clone() }
-
-#[tauri::command]
-fn backend_restart(state: tauri::State<BackendState>) -> Result<(), String> {
-    kill_backend_and_orphans(&state);
-    *state.url.lock().unwrap() = None;
-    let root = state.project_root.lock().unwrap().clone().ok_or("no root")?;
-    spawn_backend(&root, &state)
-}
-
-#[tauri::command]
-fn check_env_ready(state: tauri::State<BackendState>) -> EnvStatus {
-    match state.project_root.lock().unwrap().clone() {
-        Some(root) => EnvStatus {
-            ready: dir_exists(&root.join("env")) && find_python(&root).is_some(),
-            python_found: find_python(&root).is_some(),
-            env_exists: dir_exists(&root.join("env")),
-            project_root: Some(root.display().to_string()),
-        },
-        None => EnvStatus { ready: false, python_found: false, env_exists: false, project_root: None },
-    }
-}
-
-#[tauri::command]
-fn detect_platform(state: tauri::State<BackendState>) -> PlatformInfo {
-    let root = state.project_root.lock().unwrap().clone();
-    let version = root.as_ref().map(|r| get_version_from_file(r)).unwrap_or_else(|| "1.3.0-beta.8".into());
-    let base = "https://huggingface.co/Politrees/PolGen/resolve/main";
-    let has_nvidia = detect_nvidia_gpu();
-    let os_name = if cfg!(target_os = "windows") { "windows" } else if cfg!(target_os = "macos") { "macos" } else { "linux" };
-
-    let mut variants = vec![];
-    if cfg!(target_os = "windows") {
-        variants.push(EnvVariant { label: "Windows CUDA (NVIDIA)".into(), url: format!("{base}/Windows/PolGen-{version}_Windows_CUDA.zip?download=true"), description: "NVIDIA GPU. Рекомендуется.".into() });
-        variants.push(EnvVariant { label: "Windows CPU".into(), url: format!("{base}/Windows/PolGen-{version}_Windows_CPU.zip?download=true"), description: "AMD / без GPU.".into() });
-    } else if cfg!(target_os = "linux") {
-        variants.push(EnvVariant { label: "Linux CUDA (NVIDIA)".into(), url: format!("{base}/Linux/PolGen-{version}_Linux_CUDA.zip?download=true"), description: "NVIDIA GPU. Рекомендуется.".into() });
-        variants.push(EnvVariant { label: "Linux CPU".into(), url: format!("{base}/Linux/PolGen-{version}_Linux_CPU.zip?download=true"), description: "AMD / без GPU.".into() });
-    } else {
-        variants.push(EnvVariant { label: "MacOS".into(), url: format!("{base}/MacOS/PolGen-{version}_MacOS.zip?download=true"), description: "Apple Silicon / Intel.".into() });
-    }
-    let recommended_url = if cfg!(target_os = "macos") { variants[0].url.clone() } else if has_nvidia { variants[0].url.clone() } else { variants.last().unwrap().url.clone() };
-    PlatformInfo { os: os_name.into(), has_nvidia, recommended_url, all_variants: variants }
-}
-
-#[tauri::command]
-fn download_env(app_handle: tauri::AppHandle, state: tauri::State<BackendState>, url: String) -> Result<(), String> {
-    if state.setup_running.load(Ordering::SeqCst) { return Err("Уже запущена".into()); }
-    let root = state.project_root.lock().unwrap().clone().ok_or("no root")?;
-    if dir_exists(&root.join("env")) { return Err("env/ уже существует".into()); }
-
-    state.setup_running.store(true, Ordering::SeqCst);
-    let flag = state.setup_running.clone();
-    let handle = app_handle.clone();
-
-    std::thread::spawn(move || {
-        let result = do_full_install(&url, &root, &handle);
-        let (success, message) = match result { Ok(()) => (true, "Установка завершена!".into()), Err(e) => (false, format!("Ошибка: {e}")) };
-        let _ = handle.emit_all("download-done", DownloadDoneEvent { success, message });
-        flag.store(false, Ordering::SeqCst);
-    });
-    Ok(())
-}
-
-fn do_full_install(url: &str, root: &Path, handle: &tauri::AppHandle) -> Result<(), String> {
+fn do_full_install(url: &str, root: &Path, handle: &tauri::AppHandle, cancel_flag: &AtomicBool) -> Result<(), String> {
     let zip_path = root.join("_polgen_env_download.zip");
 
     // 1. Download
-    download_file_with_progress(url, &zip_path, handle, "Окружение")?;
+    if let Err(e) = download_file_with_progress(url, &zip_path, handle, "Окружение", cancel_flag) {
+        cleanup_partial_install(root);
+        return Err(e);
+    }
+
+    // Проверяем отмену перед распаковкой
+    if !cancel_flag.load(Ordering::SeqCst) {
+        cleanup_partial_install(root);
+        return Err("Установка отменена".into());
+    }
 
     // 2. Extract env/
     let _ = handle.emit_all("setup-log", SetupLogEvent { line: "Извлечение env/...".into() });
@@ -423,51 +426,40 @@ fn do_full_install(url: &str, root: &Path, handle: &tauri::AppHandle) -> Result<
         message: "Извлечение env/...".into(),
     });
 
-    let zip_file = fs::File::open(&zip_path).map_err(|e| format!("open zip: {e}"))?;
-    let mut archive = zip::ZipArchive::new(zip_file).map_err(|e| format!("zip parse: {e}"))?;
+    let zip_file = fs::File::open(&zip_path).map_err(|e| {
+        cleanup_partial_install(root);
+        format!("open zip: {e}")
+    })?;
+    let mut archive = zip::ZipArchive::new(zip_file).map_err(|e| {
+        cleanup_partial_install(root);
+        format!("zip parse: {e}")
+    })?;
     let env_dir = root.join("env");
     let mut extracted: u64 = 0;
 
-    // Логируем первые 30 путей для диагностики
     let total_entries = archive.len();
     let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("ZIP содержит {total_entries} записей") });
-    for i in 0..std::cmp::min(30, total_entries) {
-        if let Ok(entry) = archive.by_index(i) {
-            let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("  [{i}] {}", entry.name()) });
-        }
-    }
 
-    // Определяем префикс env/ внутри ZIP
-    // Ищем первый путь содержащий /env/ или начинающийся с env/
+    // Найти prefix env/
     let mut env_prefix: Option<String> = None;
     for i in 0..total_entries {
         if let Ok(entry) = archive.by_index(i) {
             let name = entry.name().replace('\\', "/");
-            // Ищем паттерн: "что-угодно/env/" или просто "env/"
             if let Some(pos) = name.find("/env/") {
-                env_prefix = Some(name[..pos + 5].to_string()); // включая "/env/"
-                let _ = handle.emit_all("setup-log", SetupLogEvent {
-                    line: format!("Найден env/ с префиксом: {}", env_prefix.as_ref().unwrap()),
-                });
+                env_prefix = Some(name[..pos + 5].to_string());
                 break;
             } else if name.starts_with("env/") {
                 env_prefix = Some("env/".to_string());
-                let _ = handle.emit_all("setup-log", SetupLogEvent { line: "Найден env/ в корне ZIP".into() });
                 break;
             }
         }
     }
-
     if env_prefix.is_none() {
-        // Fallback: может быть env — директория без trailing slash
         for i in 0..total_entries {
             if let Ok(entry) = archive.by_index(i) {
                 let name = entry.name().replace('\\', "/");
                 if name.contains("/env") && entry.is_dir() {
                     env_prefix = Some(name.to_string());
-                    let _ = handle.emit_all("setup-log", SetupLogEvent {
-                        line: format!("Найден env/ (dir entry): {}", env_prefix.as_ref().unwrap()),
-                    });
                     break;
                 }
             }
@@ -475,20 +467,24 @@ fn do_full_install(url: &str, root: &Path, handle: &tauri::AppHandle) -> Result<
     }
 
     let prefix = env_prefix.ok_or_else(|| {
-        "В ZIP не найдена папка env/. Проверьте что скачан правильный архив.".to_string()
+        cleanup_partial_install(root);
+        "В ZIP не найдена папка env/.".to_string()
     })?;
 
-    // Извлекаем файлы
+    let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("Префикс: {prefix}") });
+
     for i in 0..total_entries {
+        // Проверяем отмену каждые 500 файлов
+        if i % 500 == 0 && !cancel_flag.load(Ordering::SeqCst) {
+            cleanup_partial_install(root);
+            return Err("Установка отменена".into());
+        }
+
         let mut entry = archive.by_index(i).map_err(|e| format!("zip entry {i}: {e}"))?;
         let raw_name = entry.name().replace('\\', "/");
 
-        // Проверяем что путь начинается с найденного префикса
-        if !raw_name.starts_with(&prefix) {
-            continue;
-        }
+        if !raw_name.starts_with(&prefix) { continue; }
 
-        // Получаем относительный путь после prefix
         let rel = &raw_name[prefix.len()..];
         if rel.is_empty() {
             fs::create_dir_all(&env_dir).map_err(|e| format!("mkdir env: {e}"))?;
@@ -516,9 +512,7 @@ fn do_full_install(url: &str, root: &Path, handle: &tauri::AppHandle) -> Result<
 
             extracted += 1;
             if extracted % 2000 == 0 {
-                let _ = handle.emit_all("setup-log", SetupLogEvent {
-                    line: format!("Извлечено: {extracted} файлов"),
-                });
+                let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("Извлечено: {extracted} файлов") });
                 let _ = handle.emit_all("download-progress", DownloadProgressEvent {
                     downloaded_mb: 0.0, total_mb: 0.0, percent: 100.0, speed_mbps: 0.0, eta_seconds: 0.0,
                     message: format!("Извлечение: {extracted} файлов..."),
@@ -531,23 +525,231 @@ fn do_full_install(url: &str, root: &Path, handle: &tauri::AppHandle) -> Result<
     let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("env/ извлечён: {extracted} файлов") });
 
     if extracted == 0 {
-        return Err("Не удалось извлечь ни одного файла из env/. Структура ZIP не соответствует ожидаемой.".into());
+        cleanup_partial_install(root);
+        return Err("Не удалось извлечь ни одного файла из env/.".into());
     }
 
     // 3. Ensure dirs
     ensure_dirs(root);
 
     // 4. FFmpeg
-    if let Err(e) = install_ffmpeg(root, handle) {
+    if let Err(e) = install_ffmpeg(root, handle, cancel_flag) {
         let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("⚠ FFmpeg: {e}") });
     }
 
     // 5. RVC models
-    if let Err(e) = install_rvc_models(root, handle) {
-        let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("⚠ Модели: {e}") });
+    if cancel_flag.load(Ordering::SeqCst) {
+        if let Err(e) = install_rvc_models(root, handle) {
+            let _ = handle.emit_all("setup-log", SetupLogEvent { line: format!("⚠ Модели: {e}") });
+        }
     }
 
     let _ = handle.emit_all("setup-log", SetupLogEvent { line: "✓ Установка завершена!".into() });
+    Ok(())
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Tauri Commands
+// ═══════════════════════════════════════════════════════════════
+
+#[tauri::command]
+fn backend_get_url(state: tauri::State<BackendState>) -> Option<String> {
+    state.url.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn backend_restart(state: tauri::State<BackendState>) -> Result<(), String> {
+    kill_everything(&state);
+    *state.url.lock().unwrap() = None;
+    let root = state.project_root.lock().unwrap().clone().ok_or("no root")?;
+    spawn_backend(&root, &state)
+}
+
+/// Гарантирует что backend запущен. Если уже работает — ничего не делает.
+/// Вызывается из main окна при появлении.
+#[tauri::command]
+fn ensure_backend_running(state: tauri::State<BackendState>) -> Result<(), String> {
+    // Если URL уже есть — backend может быть жив
+    if let Some(ref url) = *state.url.lock().unwrap() {
+        // Быстрая проверка — если процесс ещё жив, не перезапускаем
+        if let Some(ref mut child) = *state.child.lock().unwrap() {
+            match child.try_wait() {
+                Ok(None) => {
+                    // Процесс жив
+                    println!("[ensure] Backend уже работает: {url}");
+                    return Ok(());
+                }
+                _ => {
+                    // Процесс завершился
+                    println!("[ensure] Backend процесс завершился, перезапуск...");
+                }
+            }
+        }
+    }
+
+    // Backend не запущен — запускаем
+    *state.url.lock().unwrap() = None;
+    let root = state.project_root.lock().unwrap().clone().ok_or("no root")?;
+    
+    if find_python(&root).is_none() {
+        return Err("Python не найден в env/".into());
+    }
+
+    println!("[ensure] Запускаю backend...");
+    spawn_backend(&root, &state)
+}
+
+#[tauri::command]
+fn check_env_ready(state: tauri::State<BackendState>) -> EnvStatus {
+    match state.project_root.lock().unwrap().clone() {
+        Some(root) => EnvStatus {
+            ready: dir_exists(&root.join("env")) && find_python(&root).is_some(),
+            python_found: find_python(&root).is_some(),
+            env_exists: dir_exists(&root.join("env")),
+            project_root: Some(root.display().to_string()),
+        },
+        None => EnvStatus { ready: false, python_found: false, env_exists: false, project_root: None },
+    }
+}
+
+struct GpuInfo {
+    name: String,
+    vram_mb: u64,
+    cuda_capable: bool,
+    reason: String,
+}
+
+fn detect_gpu_details() -> GpuInfo {
+    // Пытаемся получить информацию через nvidia-smi
+    let output = Command::new("nvidia-smi")
+        .args(["--query-gpu=name,memory.total,compute_cap", "--format=csv,noheader,nounits"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            // Формат: "NVIDIA GeForce GTX 1080, 8192, 6.1"
+            let parts: Vec<&str> = stdout.split(',').map(|s| s.trim()).collect();
+
+            if parts.len() >= 3 {
+                let name = parts[0].to_string();
+                let vram_mb: u64 = parts[1].parse().unwrap_or(0);
+                let compute_cap: f64 = parts[2].parse().unwrap_or(0.0);
+
+                // compute capability:
+                // Maxwell = 5.x (GTX 900 серия)
+                // Pascal  = 6.x (GTX 10xx серия) — минимум для нас
+                // Volta   = 7.0
+                // Turing  = 7.5 (RTX 20xx)
+                // Ampere  = 8.x (RTX 30xx)
+                // Ada     = 8.9 (RTX 40xx)
+                // Blackwell = 10.x (RTX 50xx)
+
+                let (cuda_capable, reason) = if compute_cap < 1.0 {
+                    (false, "Не удалось определить compute capability".into())
+                } else if compute_cap < 6.0 {
+                    (false, format!(
+                        "Архитектура Maxwell или старше (compute {:.1}). GTX 900 серия и ниже не поддерживается. Требуется Pascal (GTX 10xx) или новее.",
+                        compute_cap
+                    ))
+                } else if vram_mb < 3800 {
+                    (false, format!(
+                        "Недостаточно VRAM: {} МБ. Минимум 4 ГБ для CUDA режима.",
+                        vram_mb
+                    ))
+                } else {
+                    let note = if vram_mb < 6000 {
+                        format!("{} ({} МБ VRAM, compute {:.1}) — минимальная конфигурация, возможны ограничения", name, vram_mb, compute_cap)
+                    } else {
+                        format!("{} ({} МБ VRAM, compute {:.1}) — подходит для CUDA", name, vram_mb, compute_cap)
+                    };
+                    (true, note)
+                };
+
+                return GpuInfo { name, vram_mb, cuda_capable, reason };
+            }
+
+            // Парсинг не удался но nvidia-smi работает
+            let name = if !stdout.is_empty() { stdout.lines().next().unwrap_or("NVIDIA GPU").to_string() } else { "NVIDIA GPU".into() };
+            GpuInfo { name, vram_mb: 0, cuda_capable: false, reason: "Не удалось определить характеристики GPU".into() }
+        }
+        _ => {
+            // nvidia-smi не найден или ошибка
+            GpuInfo {
+                name: "Не обнаружена".into(),
+                vram_mb: 0,
+                cuda_capable: false,
+                reason: "NVIDIA GPU не обнаружена. Будет использоваться CPU режим.".into(),
+            }
+        }
+    }
+}
+
+#[tauri::command]
+fn detect_platform(state: tauri::State<BackendState>) -> PlatformInfo {
+    let root = state.project_root.lock().unwrap().clone();
+    let version = root.as_ref().map(|r| get_version_from_file(r)).unwrap_or_else(|| "1.3.0-beta.8".into());
+    let base = "https://huggingface.co/Politrees/PolGen/resolve/main";
+
+    let gpu = detect_gpu_details();
+    let has_nvidia = gpu.vram_mb > 0;
+    let os_name = if cfg!(target_os = "windows") { "windows" } else if cfg!(target_os = "macos") { "macos" } else { "linux" };
+
+    let mut variants = vec![];
+    if cfg!(target_os = "windows") {
+        variants.push(EnvVariant { label: "Windows CUDA (NVIDIA)".into(), url: format!("{base}/Windows/PolGen-{version}_Windows_CUDA.zip?download=true"), description: "Для NVIDIA GPU (GTX 1050+, 4 ГБ+ VRAM). ~8-10 ГБ.".into() });
+        variants.push(EnvVariant { label: "Windows CPU".into(), url: format!("{base}/Windows/PolGen-{version}_Windows_CPU.zip?download=true"), description: "Без GPU / AMD / старые NVIDIA. ~4-5 ГБ.".into() });
+    } else if cfg!(target_os = "linux") {
+        variants.push(EnvVariant { label: "Linux CUDA (NVIDIA)".into(), url: format!("{base}/Linux/PolGen-{version}_Linux_CUDA.zip?download=true"), description: "Для NVIDIA GPU (GTX 1050+, 4 ГБ+ VRAM). ~8-10 ГБ.".into() });
+        variants.push(EnvVariant { label: "Linux CPU".into(), url: format!("{base}/Linux/PolGen-{version}_Linux_CPU.zip?download=true"), description: "Без GPU / AMD / старые NVIDIA. ~4-5 ГБ.".into() });
+    } else {
+        variants.push(EnvVariant { label: "MacOS".into(), url: format!("{base}/MacOS/PolGen-{version}_MacOS.zip?download=true"), description: "Apple Silicon (MPS) / Intel. ~5-6 ГБ.".into() });
+    }
+
+    // Автовыбор: CUDA только если GPU реально подходит
+    let recommended_url = if cfg!(target_os = "macos") { variants[0].url.clone() }
+		else if gpu.cuda_capable { variants[0].url.clone() }  // CUDA
+		else { variants.last().unwrap().url.clone() };  // CPU
+
+    PlatformInfo {
+        os: os_name.into(),
+        has_nvidia,
+        gpu_name: gpu.name,
+        gpu_vram_mb: gpu.vram_mb,
+        gpu_cuda_capable: gpu.cuda_capable,
+        cuda_reason: gpu.reason,
+        recommended_url,
+        all_variants: variants,
+    }
+}
+
+
+#[tauri::command]
+fn download_env(app_handle: tauri::AppHandle, state: tauri::State<BackendState>, url: String) -> Result<(), String> {
+    if state.setup_running.load(Ordering::SeqCst) { return Err("Уже запущена".into()); }
+    let root = state.project_root.lock().unwrap().clone().ok_or("no root")?;
+    if dir_exists(&root.join("env")) { return Err("env/ уже существует".into()); }
+
+    state.setup_running.store(true, Ordering::SeqCst);
+    let flag = state.setup_running.clone();
+    let handle = app_handle.clone();
+
+    std::thread::spawn(move || {
+        let result = do_full_install(&url, &root, &handle, &flag);
+        let running = flag.load(Ordering::SeqCst);
+        let (success, message) = match result {
+            Ok(()) if running => (true, "Установка завершена!".into()),
+            Ok(()) => (false, "Установка отменена.".into()),
+            Err(e) => {
+                cleanup_partial_install(&root);
+                (false, format!("Ошибка: {e}"))
+            }
+        };
+        let _ = handle.emit_all("download-done", DownloadDoneEvent { success, message });
+        flag.store(false, Ordering::SeqCst);
+    });
     Ok(())
 }
 
@@ -561,7 +763,10 @@ fn run_setup(app_handle: tauri::AppHandle, state: tauri::State<BackendState>) ->
     let handle = app_handle.clone();
     std::thread::spawn(move || {
         let result = run_installer(&script, &root, &handle);
-        let (success, message) = match result { Ok(()) => (true, "Установка завершена!".into()), Err(e) => (false, format!("Ошибка: {e}")) };
+        let (success, message) = match result {
+            Ok(()) => (true, "Установка завершена!".into()),
+            Err(e) => (false, format!("Ошибка: {e}"))
+        };
         let _ = handle.emit_all("setup-done", SetupDoneEvent { success, message });
         flag.store(false, Ordering::SeqCst);
     });
@@ -569,32 +774,52 @@ fn run_setup(app_handle: tauri::AppHandle, state: tauri::State<BackendState>) ->
 }
 
 fn run_installer(script: &Path, root: &Path, handle: &tauri::AppHandle) -> Result<(), String> {
-    let mut cmd = if cfg!(target_os = "windows") { let mut c = Command::new("cmd"); c.args(["/c", &script.display().to_string()]); c }
-    else { let mut c = Command::new("bash"); c.arg(script); c };
+    let mut cmd = if cfg!(target_os = "windows") {
+        let mut c = Command::new("cmd"); c.args(["/c", &script.display().to_string()]); c
+    } else {
+        let mut c = Command::new("bash"); c.arg(script); c
+    };
     cmd.current_dir(root).stdout(Stdio::piped()).stderr(Stdio::piped()).env("PYTHONUTF8", "1");
     #[cfg(target_os = "windows")] { use std::os::windows::process::CommandExt; cmd.creation_flags(0x08000000); }
     let mut child = cmd.spawn().map_err(|e| format!("spawn: {e}"))?;
-    if let Some(out) = child.stdout.take() { let h = handle.clone(); std::thread::spawn(move || { for line in BufReader::new(out).lines().flatten() { let _ = h.emit_all("setup-log", SetupLogEvent { line }); } }); }
-    if let Some(err) = child.stderr.take() { let h = handle.clone(); std::thread::spawn(move || { for line in BufReader::new(err).lines().flatten() { let _ = h.emit_all("setup-log", SetupLogEvent { line }); } }); }
+    if let Some(out) = child.stdout.take() {
+        let h = handle.clone();
+        std::thread::spawn(move || { for line in BufReader::new(out).lines().flatten() { let _ = h.emit_all("setup-log", SetupLogEvent { line }); } });
+    }
+    if let Some(err) = child.stderr.take() {
+        let h = handle.clone();
+        std::thread::spawn(move || { for line in BufReader::new(err).lines().flatten() { let _ = h.emit_all("setup-log", SetupLogEvent { line }); } });
+    }
     let status = child.wait().map_err(|e| format!("wait: {e}"))?;
     if status.success() { Ok(()) } else { Err(format!("exit: {status}")) }
 }
 
 #[tauri::command]
+fn cancel_setup(state: tauri::State<BackendState>) -> Result<(), String> {
+    state.setup_running.store(false, Ordering::SeqCst);
+    kill_all_polgen_python();
+    // Cleanup будет вызван в do_full_install когда он обнаружит cancel
+    Ok(())
+}
+
+#[tauri::command]
 fn exit_app(app_handle: tauri::AppHandle, state: tauri::State<BackendState>) {
-    kill_backend_and_orphans(&state);
+    kill_everything(&state);
     app_handle.exit(0);
 }
 
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> { open_path_in_explorer(&path) }
+
 #[tauri::command]
 fn open_file_default(path: String) -> Result<(), String> { open_path_in_explorer(&path) }
+
 #[tauri::command]
 fn open_output_dir(state: tauri::State<BackendState>) -> Result<(), String> {
     let root = state.project_root.lock().unwrap().clone().ok_or("no root")?;
     open_path_in_explorer(&root.join("output").join("RVC_output").display().to_string())
 }
+
 #[tauri::command]
 fn open_rvc_model_dir(state: tauri::State<BackendState>, model_name: String) -> Result<(), String> {
     if !is_safe_model_name(&model_name) { return Err("unsafe name".into()); }
@@ -606,8 +831,10 @@ fn open_rvc_model_dir(state: tauri::State<BackendState>, model_name: String) -> 
 
 fn main() {
     let backend_state = BackendState {
-        url: Arc::new(Mutex::new(None)), child: Arc::new(Mutex::new(None)),
-        project_root: Arc::new(Mutex::new(None)), setup_running: Arc::new(AtomicBool::new(false)),
+        url: Arc::new(Mutex::new(None)),
+        child: Arc::new(Mutex::new(None)),
+        project_root: Arc::new(Mutex::new(None)),
+        setup_running: Arc::new(AtomicBool::new(false)),
     };
     let st_for_events = backend_state.clone();
     let context = tauri::generate_context!();
@@ -618,7 +845,9 @@ fn main() {
             match acquire_single_instance_lock() {
                 Ok(lock) => { app.manage(lock); }
                 Err(msg) => {
-                    if let Some(w) = app.get_window("main") { tauri::api::dialog::message(Some(&w), "PolGen", msg.clone()); }
+                    if let Some(w) = app.get_window("main") {
+                        tauri::api::dialog::message(Some(&w), "PolGen", msg.clone());
+                    }
                     return Err(Box::new(SetupMsg(msg)));
                 }
             }
@@ -635,32 +864,48 @@ fn main() {
             if find_python(&root).is_some() {
                 if let Some(sw) = app.get_window("setup") { let _ = sw.close(); }
                 if let Some(mw) = app.get_window("main") { let _ = mw.show(); }
-                if let Err(e) = spawn_backend(&root, &backend_state) { eprintln!("[tauri] backend error: {e}"); }
+                if let Err(e) = spawn_backend(&root, &backend_state) {
+                    eprintln!("[tauri] backend error: {e}");
+                }
             } else {
                 println!("[tauri] env not ready — showing setup");
+                // Очищаем мусор от предыдущих неудачных установок
+                cleanup_partial_install(&root);
                 if let Some(sw) = app.get_window("setup") { let _ = sw.show(); let _ = sw.center(); }
             }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            backend_get_url, backend_restart, check_env_ready, detect_platform,
-            run_setup, download_env, exit_app,
-            open_folder, open_file_default, open_output_dir, open_rvc_model_dir
+            backend_get_url, backend_restart, ensure_backend_running,
+            check_env_ready, detect_platform,
+            run_setup, download_env, cancel_setup, exit_app,
+			open_folder, open_file_default, open_output_dir, open_rvc_model_dir
         ])
         .build(context).expect("build error");
 
     app.run(move |app_handle, event| match event {
         RunEvent::WindowEvent { label: _, event: WindowEvent::CloseRequested { .. }, .. } => {
-            kill_backend_and_orphans(&st_for_events);
+            kill_everything(&st_for_events);
             app_handle.exit(0);
         }
         RunEvent::WindowEvent { ref label, event: WindowEvent::Destroyed, .. } => {
             if label == "setup" {
-                let vis = app_handle.get_window("main").and_then(|w| w.is_visible().ok()).unwrap_or(false);
-                if !vis { kill_backend_and_orphans(&st_for_events); app_handle.exit(0); }
+                let vis = app_handle.get_window("main")
+                    .and_then(|w| w.is_visible().ok())
+                    .unwrap_or(false);
+                if !vis {
+                    // Setup закрыт без перехода в main — чистим всё
+                    if let Some(root) = st_for_events.project_root.lock().unwrap().clone() {
+                        cleanup_partial_install(&root);
+                    }
+                    kill_everything(&st_for_events);
+                    app_handle.exit(0);
+                }
             }
         }
-        RunEvent::ExitRequested { .. } | RunEvent::Exit => { kill_backend_and_orphans(&st_for_events); }
+        RunEvent::ExitRequested { .. } | RunEvent::Exit => {
+            kill_everything(&st_for_events);
+        }
         _ => {}
     });
 }

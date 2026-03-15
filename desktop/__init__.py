@@ -1,0 +1,1 @@
+"""PolGen Desktop — Tauri UI + FastAPI backend."""

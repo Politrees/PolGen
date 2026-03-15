@@ -10,7 +10,7 @@ on:
         description: 'Version to release (e.g., 1.4.0, 1.4.0-beta.1)'
         required: true
         type: string
-      build_windows:
+      build_windows_cuda:
         description: 'Build Windows (CUDA)'
         type: boolean
         default: true
@@ -18,7 +18,7 @@ on:
         description: 'Build Windows (CPU only)'
         type: boolean
         default: false
-      build_linux:
+      build_linux_cuda:
         description: 'Build Linux (CUDA)'
         type: boolean
         default: true
@@ -52,9 +52,9 @@ jobs:
       version: ${{ steps.get_version.outputs.version }}
       version_tag: ${{ steps.get_version.outputs.version_tag }}
       is_prerelease: ${{ steps.get_version.outputs.is_prerelease }}
-      build_windows: ${{ steps.set_builds.outputs.build_windows }}
+      build_windows_cuda: ${{ steps.set_builds.outputs.build_windows_cuda }}
       build_windows_cpu: ${{ steps.set_builds.outputs.build_windows_cpu }}
-      build_linux: ${{ steps.set_builds.outputs.build_linux }}
+      build_linux_cuda: ${{ steps.set_builds.outputs.build_linux_cuda }}
       build_linux_cpu: ${{ steps.set_builds.outputs.build_linux_cpu }}
       build_macos: ${{ steps.set_builds.outputs.build_macos }}
 
@@ -75,39 +75,34 @@ jobs:
           else
             VERSION="${GITHUB_REF#refs/tags/v}"
           fi
-          
           VERSION="${VERSION#v}"
-          
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
             echo "Invalid version format: $VERSION"
             exit 1
           fi
-          
           if [[ "$VERSION" =~ (alpha|beta|rc|dev) ]]; then
             IS_PRERELEASE="true"
           else
             IS_PRERELEASE="false"
           fi
-          
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_tag=v$VERSION" >> $GITHUB_OUTPUT
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
-          
           echo "Version: $VERSION"
 
       - name: Set build targets
         id: set_builds
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            echo "build_windows=true" >> $GITHUB_OUTPUT
+            echo "build_windows_cuda=true" >> $GITHUB_OUTPUT
             echo "build_windows_cpu=true" >> $GITHUB_OUTPUT
-            echo "build_linux=true" >> $GITHUB_OUTPUT
+            echo "build_linux_cuda=true" >> $GITHUB_OUTPUT
             echo "build_linux_cpu=true" >> $GITHUB_OUTPUT
             echo "build_macos=true" >> $GITHUB_OUTPUT
           else
-            echo "build_windows=${{ github.event.inputs.build_windows }}" >> $GITHUB_OUTPUT
+            echo "build_windows_cuda=${{ github.event.inputs.build_windows_cuda }}" >> $GITHUB_OUTPUT
             echo "build_windows_cpu=${{ github.event.inputs.build_windows_cpu }}" >> $GITHUB_OUTPUT
-            echo "build_linux=${{ github.event.inputs.build_linux }}" >> $GITHUB_OUTPUT
+            echo "build_linux_cuda=${{ github.event.inputs.build_linux_cuda }}" >> $GITHUB_OUTPUT
             echo "build_linux_cpu=${{ github.event.inputs.build_linux_cpu }}" >> $GITHUB_OUTPUT
             echo "build_macos=${{ github.event.inputs.build_macos }}" >> $GITHUB_OUTPUT
           fi
@@ -115,18 +110,11 @@ jobs:
       - name: Update VERSION file
         run: echo "${{ steps.get_version.outputs.version }}" > VERSION
 
-      - name: Update README.md download links
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          sed -i -E "s|/Windows/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_Windows_CUDA\.zip|/Windows/PolGen-${VERSION}_Windows_CUDA.zip|g" README.md
-          sed -i -E "s|/Linux/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_Linux_CUDA\.zip|/Linux/PolGen-${VERSION}_Linux_CUDA.zip|g" README.md
-          sed -i -E "s|/MacOS/PolGen-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?_MacOS\.zip|/MacOS/PolGen-${VERSION}_MacOS.zip|g" README.md
-
       - name: Commit and push version changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add VERSION README.md
+          git add VERSION
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
@@ -139,7 +127,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   build-windows:
     needs: prepare
-    if: needs.prepare.outputs.build_windows == 'true'
+    if: needs.prepare.outputs.build_windows_cuda == 'true'
     runs-on: windows-latest
     timeout-minutes: 90
     env:
@@ -185,7 +173,7 @@ jobs:
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
-      - name: Cleanup
+      - name: Cleanup env
         shell: bash -el {0}
         run: |
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -195,29 +183,30 @@ jobs:
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
 
-      - name: Create archive
+      - name: Create env archive
         shell: powershell
         run: |
-          $archiveName = "PolGen-${{ env.VERSION }}_Windows_CUDA.zip"
-          $tempDir = "PolGen-${{ env.VERSION }}_Windows_CUDA"
-          
+          Compress-Archive -Path "env" -DestinationPath "env_CUDA.zip" -Force
+          $sizeGB = [math]::Round((Get-Item "env_CUDA.zip").Length / 1GB, 2)
+          Write-Host "env_CUDA.zip: $sizeGB GB"
+
+      - name: Create code archive
+        shell: powershell
+        run: |
+          $excludeItems = @('.git', '.github', '__pycache__', '.ipynb_checkpoints', 'env', 'env_CUDA.zip')
+          $tempDir = "_polgen_code"
           New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-          
-          $excludeItems = @('.git', '.github', '__pycache__', '.ipynb_checkpoints', $tempDir)
-          Get-ChildItem -Path . | Where-Object { 
+          Get-ChildItem -Path . | Where-Object {
             $item = $_.Name
             -not ($excludeItems | Where-Object { $item -like $_ })
           } | Copy-Item -Destination $tempDir -Recurse -Force
-          
-          Get-ChildItem -Path $tempDir -Recurse -Force -Directory | 
-            Where-Object { $_.Name -match '^\.git|^__pycache__|\.ipynb_checkpoints' } | 
+          Get-ChildItem -Path $tempDir -Recurse -Force -Directory |
+            Where-Object { $_.Name -match '^\.git|^__pycache__|\.ipynb_checkpoints' } |
             Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-          
-          Compress-Archive -Path $tempDir -DestinationPath $archiveName -Force
+          Compress-Archive -Path "$tempDir\*" -DestinationPath "PolGen.zip" -Force
           Remove-Item -Path $tempDir -Recurse -Force
-          
-          $sizeGB = [math]::Round((Get-Item $archiveName).Length / 1GB, 2)
-          Write-Host "Created: $archiveName ($sizeGB GB)"
+          $sizeMB = [math]::Round((Get-Item "PolGen.zip").Length / 1MB, 1)
+          Write-Host "PolGen.zip: $sizeMB MB"
 
       - name: Setup Python for upload
         uses: actions/setup-python@v5
@@ -233,25 +222,28 @@ jobs:
           python << 'EOF'
           import os
           from huggingface_hub import HfApi
-          
+
           api = HfApi()
           version = os.environ["VERSION"]
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
-          filename = f"PolGen-{version}_Windows_CUDA.zip"
-          
-          if os.path.exists(filename):
-              size_gb = os.path.getsize(filename) / (1024 ** 3)
-              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
-              api.upload_file(
-                  path_or_fileobj=filename,
-                  path_in_repo=f"Windows/{filename}",
-                  repo_id=repo_id,
-                  repo_type="model",
-                  token=token,
-                  commit_message=f"Upload PolGen v{version} for Windows (CUDA)"
-              )
-              print("Done!")
+
+          for filename, path_in_repo in [
+              ("PolGen.zip", f"Windows/{version}/PolGen.zip"),
+              ("env_CUDA.zip", f"Windows/{version}/env_CUDA.zip"),
+          ]:
+              if os.path.exists(filename):
+                  size_gb = os.path.getsize(filename) / (1024 ** 3)
+                  print(f"Uploading {filename} ({size_gb:.2f} GB) → {path_in_repo}")
+                  api.upload_file(
+                      path_or_fileobj=filename,
+                      path_in_repo=path_in_repo,
+                      repo_id=repo_id,
+                      repo_type="model",
+                      token=token,
+                      commit_message=f"Upload PolGen v{version} Windows CUDA"
+                  )
+          print("Done!")
           EOF
 
   # ═══════════════════════════════════════════════════════════════
@@ -305,7 +297,7 @@ jobs:
       - name: Update VERSION file
         run: echo "${{ env.VERSION }}" > VERSION
 
-      - name: Cleanup
+      - name: Cleanup env
         shell: bash -el {0}
         run: |
           find env -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -315,34 +307,12 @@ jobs:
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
 
-      - name: Create archive
+      - name: Create env archive
         shell: powershell
         run: |
-          $archiveName = "PolGen-${{ env.VERSION }}_Windows_CPU.zip"
-          $tempDir = "PolGen-${{ env.VERSION }}_Windows_CPU"
-          
-          New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-          
-          $excludeItems = @('.git', '.github', '__pycache__', '.ipynb_checkpoints', $tempDir)
-          Get-ChildItem -Path . | Where-Object { 
-            $item = $_.Name
-            -not ($excludeItems | Where-Object { $item -like $_ })
-          } | Copy-Item -Destination $tempDir -Recurse -Force
-          
-          Get-ChildItem -Path $tempDir -Recurse -Force -Directory | 
-            Where-Object { $_.Name -match '^\.git|^__pycache__|\.ipynb_checkpoints' } | 
-            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-          
-          Compress-Archive -Path $tempDir -DestinationPath $archiveName -Force
-          Remove-Item -Path $tempDir -Recurse -Force
-          
-          $sizeGB = [math]::Round((Get-Item $archiveName).Length / 1GB, 2)
-          Write-Host "Created: $archiveName ($sizeGB GB)"
-
-      - name: Setup Python for upload
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          Compress-Archive -Path "env" -DestinationPath "env_CPU.zip" -Force
+          $sizeGB = [math]::Round((Get-Item "env_CPU.zip").Length / 1GB, 2)
+          Write-Host "env_CPU.zip: $sizeGB GB"
 
       - name: Upload to HuggingFace
         shell: bash
@@ -353,25 +323,26 @@ jobs:
           python << 'EOF'
           import os
           from huggingface_hub import HfApi
-          
+
           api = HfApi()
           version = os.environ["VERSION"]
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
-          filename = f"PolGen-{version}_Windows_CPU.zip"
-          
+
+          # Код уже загружен в build-windows, загружаем только env
+          filename = "env_CPU.zip"
           if os.path.exists(filename):
               size_gb = os.path.getsize(filename) / (1024 ** 3)
-              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
+              print(f"Uploading {filename} ({size_gb:.2f} GB)")
               api.upload_file(
                   path_or_fileobj=filename,
-                  path_in_repo=f"Windows/{filename}",
+                  path_in_repo=f"Windows/{version}/{filename}",
                   repo_id=repo_id,
                   repo_type="model",
                   token=token,
-                  commit_message=f"Upload PolGen v{version} for Windows (CPU)"
+                  commit_message=f"Upload PolGen v{version} Windows CPU env"
               )
-              print("Done!")
+          print("Done!")
           EOF
 
   # ═══════════════════════════════════════════════════════════════
@@ -379,7 +350,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   build-linux:
     needs: prepare
-    if: needs.prepare.outputs.build_linux == 'true'
+    if: needs.prepare.outputs.build_linux_cuda == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -415,14 +386,6 @@ jobs:
             --index-url https://download.pytorch.org/whl/cu128
           uv pip install -r requirements.txt
 
-      - name: Download FFmpeg
-        run: |
-          wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-          tar -xf ffmpeg-release-amd64-static.tar.xz
-          cp ffmpeg-*-amd64-static/ffmpeg ffmpeg-*-amd64-static/ffprobe .
-          chmod +x ffmpeg ffprobe
-          rm -rf ffmpeg-*-amd64-static*
-
       - name: Download RVC models
         shell: bash -el {0}
         run: |
@@ -442,22 +405,21 @@ jobs:
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
 
-      - name: Create archive
+      - name: Create archives
         run: |
-          ARCHIVE_NAME="PolGen-${{ env.VERSION }}_Linux_CUDA.zip"
-          TEMP_DIR="PolGen-${{ env.VERSION }}_Linux_CUDA"
+          # env archive
+          zip -rq "env_CUDA.zip" env
+          echo "env_CUDA.zip: $(du -sh env_CUDA.zip | cut -f1)"
           
-          mkdir -p "$TEMP_DIR"
-          rsync -a . "$TEMP_DIR" \
+          # code archive (without env)
+          mkdir -p _code
+          rsync -a . _code \
             --exclude '.git' --exclude '.github' --exclude '__pycache__' \
             --exclude '*.pyc' --exclude '.ipynb_checkpoints' \
-            --exclude "$TEMP_DIR" --exclude '*.zip' --exclude '*.tar.xz'
-          
-          zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
-          rm -rf "$TEMP_DIR"
-          
-          SIZE_GB=$(echo "scale=2; $(stat --printf="%s" "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
-          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
+            --exclude 'env' --exclude '_code' --exclude '*.zip'
+          cd _code && zip -rq ../PolGen.zip . && cd ..
+          rm -rf _code
+          echo "PolGen.zip: $(du -sh PolGen.zip | cut -f1)"
 
       - name: Upload to HuggingFace
         env:
@@ -467,25 +429,28 @@ jobs:
           python << 'EOF'
           import os
           from huggingface_hub import HfApi
-          
+
           api = HfApi()
           version = os.environ["VERSION"]
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
-          filename = f"PolGen-{version}_Linux_CUDA.zip"
-          
-          if os.path.exists(filename):
-              size_gb = os.path.getsize(filename) / (1024 ** 3)
-              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
-              api.upload_file(
-                  path_or_fileobj=filename,
-                  path_in_repo=f"Linux/{filename}",
-                  repo_id=repo_id,
-                  repo_type="model",
-                  token=token,
-                  commit_message=f"Upload PolGen v{version} for Linux (CUDA)"
-              )
-              print("Done!")
+
+          for filename, path_in_repo in [
+              ("PolGen.zip", f"Linux/{version}/PolGen.zip"),
+              ("env_CUDA.zip", f"Linux/{version}/env_CUDA.zip"),
+          ]:
+              if os.path.exists(filename):
+                  size_gb = os.path.getsize(filename) / (1024 ** 3)
+                  print(f"Uploading {filename} ({size_gb:.2f} GB) → {path_in_repo}")
+                  api.upload_file(
+                      path_or_fileobj=filename,
+                      path_in_repo=path_in_repo,
+                      repo_id=repo_id,
+                      repo_type="model",
+                      token=token,
+                      commit_message=f"Upload PolGen v{version} Linux CUDA"
+                  )
+          print("Done!")
           EOF
 
   # ═══════════════════════════════════════════════════════════════
@@ -529,14 +494,6 @@ jobs:
             --index-url https://download.pytorch.org/whl/cpu
           uv pip install -r requirements.txt
 
-      - name: Download FFmpeg
-        run: |
-          wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-          tar -xf ffmpeg-release-amd64-static.tar.xz
-          cp ffmpeg-*-amd64-static/ffmpeg ffmpeg-*-amd64-static/ffprobe .
-          chmod +x ffmpeg ffprobe
-          rm -rf ffmpeg-*-amd64-static*
-
       - name: Download RVC models
         shell: bash -el {0}
         run: |
@@ -556,22 +513,10 @@ jobs:
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
 
-      - name: Create archive
+      - name: Create env archive
         run: |
-          ARCHIVE_NAME="PolGen-${{ env.VERSION }}_Linux_CPU.zip"
-          TEMP_DIR="PolGen-${{ env.VERSION }}_Linux_CPU"
-          
-          mkdir -p "$TEMP_DIR"
-          rsync -a . "$TEMP_DIR" \
-            --exclude '.git' --exclude '.github' --exclude '__pycache__' \
-            --exclude '*.pyc' --exclude '.ipynb_checkpoints' \
-            --exclude "$TEMP_DIR" --exclude '*.zip' --exclude '*.tar.xz'
-          
-          zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
-          rm -rf "$TEMP_DIR"
-          
-          SIZE_GB=$(echo "scale=2; $(stat --printf="%s" "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
-          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
+          zip -rq "env_CPU.zip" env
+          echo "env_CPU.zip: $(du -sh env_CPU.zip | cut -f1)"
 
       - name: Upload to HuggingFace
         env:
@@ -581,25 +526,25 @@ jobs:
           python << 'EOF'
           import os
           from huggingface_hub import HfApi
-          
+
           api = HfApi()
           version = os.environ["VERSION"]
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
-          filename = f"PolGen-{version}_Linux_CPU.zip"
-          
+
+          filename = "env_CPU.zip"
           if os.path.exists(filename):
               size_gb = os.path.getsize(filename) / (1024 ** 3)
-              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
+              print(f"Uploading {filename} ({size_gb:.2f} GB)")
               api.upload_file(
                   path_or_fileobj=filename,
-                  path_in_repo=f"Linux/{filename}",
+                  path_in_repo=f"Linux/{version}/{filename}",
                   repo_id=repo_id,
                   repo_type="model",
                   token=token,
-                  commit_message=f"Upload PolGen v{version} for Linux (CPU)"
+                  commit_message=f"Upload PolGen v{version} Linux CPU env"
               )
-              print("Done!")
+          print("Done!")
           EOF
 
   # ═══════════════════════════════════════════════════════════════
@@ -660,22 +605,19 @@ jobs:
           find env -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true
           find env -type d -name "examples" -exec rm -rf {} + 2>/dev/null || true
 
-      - name: Create archive
+      - name: Create archives
         run: |
-          ARCHIVE_NAME="PolGen-${{ env.VERSION }}_MacOS.zip"
-          TEMP_DIR="PolGen-${{ env.VERSION }}_MacOS"
+          zip -rq "env.zip" env
+          echo "env.zip: $(du -sh env.zip | cut -f1)"
           
-          mkdir -p "$TEMP_DIR"
-          rsync -a . "$TEMP_DIR" \
+          mkdir -p _code
+          rsync -a . _code \
             --exclude '.git' --exclude '.github' --exclude '__pycache__' \
             --exclude '*.pyc' --exclude '.ipynb_checkpoints' --exclude '.DS_Store' \
-            --exclude "$TEMP_DIR" --exclude '*.zip'
-          
-          zip -rq "$ARCHIVE_NAME" "$TEMP_DIR"
-          rm -rf "$TEMP_DIR"
-          
-          SIZE_GB=$(echo "scale=2; $(stat -f%z "$ARCHIVE_NAME") / 1024 / 1024 / 1024" | bc)
-          echo "Created: $ARCHIVE_NAME ($SIZE_GB GB)"
+            --exclude 'env' --exclude '_code' --exclude '*.zip'
+          cd _code && zip -rq ../PolGen.zip . && cd ..
+          rm -rf _code
+          echo "PolGen.zip: $(du -sh PolGen.zip | cut -f1)"
 
       - name: Upload to HuggingFace
         env:
@@ -685,29 +627,32 @@ jobs:
           python << 'EOF'
           import os
           from huggingface_hub import HfApi
-          
+
           api = HfApi()
           version = os.environ["VERSION"]
           repo_id = os.environ["HF_REPO"]
           token = os.environ["HF_TOKEN"]
-          filename = f"PolGen-{version}_MacOS.zip"
-          
-          if os.path.exists(filename):
-              size_gb = os.path.getsize(filename) / (1024 ** 3)
-              print(f"Uploading {filename} ({size_gb:.2f} GB)...")
-              api.upload_file(
-                  path_or_fileobj=filename,
-                  path_in_repo=f"MacOS/{filename}",
-                  repo_id=repo_id,
-                  repo_type="model",
-                  token=token,
-                  commit_message=f"Upload PolGen v{version} for MacOS"
-              )
-              print("Done!")
+
+          for filename, path_in_repo in [
+              ("PolGen.zip", f"MacOS/{version}/PolGen.zip"),
+              ("env.zip", f"MacOS/{version}/env.zip"),
+          ]:
+              if os.path.exists(filename):
+                  size_gb = os.path.getsize(filename) / (1024 ** 3)
+                  print(f"Uploading {filename} ({size_gb:.2f} GB) → {path_in_repo}")
+                  api.upload_file(
+                      path_or_fileobj=filename,
+                      path_in_repo=path_in_repo,
+                      repo_id=repo_id,
+                      repo_type="model",
+                      token=token,
+                      commit_message=f"Upload PolGen v{version} MacOS"
+                  )
+          print("Done!")
           EOF
 
   # ═══════════════════════════════════════════════════════════════
-  # Создание GitHub Release
+  # GitHub Release
   # ═══════════════════════════════════════════════════════════════
   create-github-release:
     needs: [prepare, build-windows, build-windows-cpu, build-linux, build-linux-cpu, build-macos]
@@ -731,13 +676,14 @@ jobs:
         run: |
           VERSION="${{ env.VERSION }}"
           HF_REPO="${{ env.HF_REPO }}"
+          HF_BASE="https://huggingface.co/${HF_REPO}/resolve/main"
           
           if [[ "${{ env.IS_PRERELEASE }}" == "true" ]]; then
             RELEASE_TYPE="🚧 Pre-release"
-            RELEASE_NOTE="⚠️ Это предварительная версия. Используйте на свой страх и риск."
+            RELEASE_NOTE="⚠️ Это предварительная версия."
           else
             RELEASE_TYPE="🎉 Стабильный релиз"
-            RELEASE_NOTE="✅ Это стабильная версия, рекомендованная для использования."
+            RELEASE_NOTE="✅ Стабильная версия."
           fi
           
           cat << NOTES_EOF > release_notes.md
@@ -749,59 +695,42 @@ jobs:
           
           ### 📥 Скачать
           
+          > Скачайте **PolGen.zip** (код) + **env** (окружение) для вашей ОС.
+          
           #### 🖥️ Windows
-          | Версия | Ссылка | Описание |
-          |--------|--------|----------|
-          | **CUDA** | [📦 PolGen-${VERSION}_Windows_CUDA.zip](https://huggingface.co/${HF_REPO}/resolve/main/Windows/PolGen-${VERSION}_Windows_CUDA.zip?download=true) | Для NVIDIA GPU (рекомендуется) |
-          | **CPU** | [📦 PolGen-${VERSION}_Windows_CPU.zip](https://huggingface.co/${HF_REPO}/resolve/main/Windows/PolGen-${VERSION}_Windows_CPU.zip?download=true) | Для AMD GPU / без GPU |
+          | Файл | Описание |
+          |------|----------|
+          | [📦 PolGen.zip](${HF_BASE}/Windows/${VERSION}/PolGen.zip?download=true) | Код |
+          | [📦 env_CUDA.zip](${HF_BASE}/Windows/${VERSION}/env_CUDA.zip?download=true) | Окружение NVIDIA GPU |
+          | [📦 env_CPU.zip](${HF_BASE}/Windows/${VERSION}/env_CPU.zip?download=true) | Окружение CPU |
           
           #### 🐧 Linux
-          | Версия | Ссылка | Описание |
-          |--------|--------|----------|
-          | **CUDA** | [📦 PolGen-${VERSION}_Linux_CUDA.zip](https://huggingface.co/${HF_REPO}/resolve/main/Linux/PolGen-${VERSION}_Linux_CUDA.zip?download=true) | Для NVIDIA GPU (рекомендуется) |
-          | **CPU** | [📦 PolGen-${VERSION}_Linux_CPU.zip](https://huggingface.co/${HF_REPO}/resolve/main/Linux/PolGen-${VERSION}_Linux_CPU.zip?download=true) | Для AMD GPU / без GPU |
+          | Файл | Описание |
+          |------|----------|
+          | [📦 PolGen.zip](${HF_BASE}/Linux/${VERSION}/PolGen.zip?download=true) | Код |
+          | [📦 env_CUDA.zip](${HF_BASE}/Linux/${VERSION}/env_CUDA.zip?download=true) | Окружение NVIDIA GPU |
+          | [📦 env_CPU.zip](${HF_BASE}/Linux/${VERSION}/env_CPU.zip?download=true) | Окружение CPU |
           
           #### 🍎 MacOS
-          | Версия | Ссылка | Описание |
-          |--------|--------|----------|
-          | **MPS/CPU** | [📦 PolGen-${VERSION}_MacOS.zip](https://huggingface.co/${HF_REPO}/resolve/main/MacOS/PolGen-${VERSION}_MacOS.zip?download=true) | Apple Silicon (MPS) / Intel |
-          
-          ---
-          
-          ### 📦 Включено в сборку
-          
-          - ✅ Python окружение с зависимостями
-          - ✅ FFmpeg / FFprobe
-          - ✅ Модели RVC (rmvpe.pt, hubert_base.pt)
-          - ✅ Модели FlashSR
+          | Файл | Описание |
+          |------|----------|
+          | [📦 PolGen.zip](${HF_BASE}/MacOS/${VERSION}/PolGen.zip?download=true) | Код |
+          | [📦 env.zip](${HF_BASE}/MacOS/${VERSION}/env.zip?download=true) | Окружение MPS/CPU |
           
           ---
           
           ### 🚀 Быстрый старт
           
-          1. Скачайте архив для вашей ОС
-          2. Распакуйте в любое место
-          3. Запустите:
+          1. Скачайте **PolGen.zip** + **env_*.zip** для вашей ОС
+          2. Распакуйте PolGen.zip в любое место
+          3. Распакуйте env_*.zip в ту же папку (чтобы env/ была внутри)
+          4. Запустите:
              - **Windows**: \`run-PolGen.bat\`
              - **Linux/MacOS**: \`chmod +x run-PolGen.sh && ./run-PolGen.sh\`
           
           ---
           
-          ### 💻 Системные требования
-          
-          | Платформа | GPU | RAM | Диск |
-          |-----------|-----|-----|------|
-          | Windows (CUDA) | NVIDIA | 8+ GB | ~10 GB |
-          | Windows (CPU) | Любой / без GPU | 16+ GB | ~6 GB |
-          | Linux (CUDA) | NVIDIA | 8+ GB | ~14 GB |
-          | Linux (CPU) | Любой / без GPU | 16+ GB | ~7 GB |
-          | MacOS | Apple Silicon / Intel | 8+ GB | ~6 GB |
-          
-          ---
-          
-          📚 **Документация**: [README](https://github.com/Politrees/PolGen#readme)
-          🐛 **Сообщить о проблеме**: [Issues](https://github.com/Politrees/PolGen/issues)
-          💬 **Telegram**: [Канал](https://t.me/pol1trees) | [Чат](https://t.me/+GMTP7hZqY0E4OGRi)
+          📚 [README](https://github.com/Politrees/PolGen#readme) • 🐛 [Issues](https://github.com/Politrees/PolGen/issues) • 💬 [Telegram](https://t.me/pol1trees)
           NOTES_EOF
 
       - name: Create GitHub Release

@@ -3,3 +3,5 @@ dist/
 src-tauri/target/
 src-tauri/.tauri/
 .DS_Store
+__pycache__/
+*.pyc

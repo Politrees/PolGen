@@ -9,8 +9,8 @@ from fastapi.responses import StreamingResponse
 
 from rvc.modules.edge_voices import edge_voices
 from rvc.modules.model_manager import delete_model
-from polgen_backend.jobs import JobManager, sse_event_generator
-from polgen_backend.schemas import (
+from desktop.backend.jobs import JobManager, sse_event_generator
+from desktop.backend.schemas import (
     ConvertFileRequest,
     EdgeVoicesResponse,
     JobStartedResponse,
@@ -36,13 +36,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True}
 
+
 @app.get("/voices/edge", response_model=EdgeVoicesResponse)
 def list_edge_voices():
     return {"voices": edge_voices}
+
 
 @app.get("/models/rvc")
 def list_rvc_models() -> dict[str, list[str]]:
@@ -50,6 +53,7 @@ def list_rvc_models() -> dict[str, list[str]]:
         return {"models": []}
     models = sorted([d for d in os.listdir(RVC_MODELS_DIR) if os.path.isdir(os.path.join(RVC_MODELS_DIR, d))])
     return {"models": models}
+
 
 @app.delete("/models/rvc/{model_name}")
 def api_delete_model(model_name: str) -> dict[str, str]:
@@ -60,6 +64,7 @@ def api_delete_model(model_name: str) -> dict[str, str]:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"message": "deleted"}
+
 
 @app.post("/jobs/convert", response_model=JobStartedResponse)
 def start_convert(req: ConvertFileRequest):
@@ -72,6 +77,7 @@ def start_convert(req: ConvertFileRequest):
     jobs.run_worker_job(job, payload)
     return {"job_id": job.job_id}
 
+
 @app.post("/jobs/tts_convert", response_model=JobStartedResponse)
 def start_tts_convert(req: TtsConvertRequest):
     job = jobs.create_job()
@@ -79,6 +85,7 @@ def start_tts_convert(req: TtsConvertRequest):
     payload["mode"] = "tts_convert"
     jobs.run_worker_job(job, payload)
     return {"job_id": job.job_id}
+
 
 @app.post("/jobs/models/install_url", response_model=JobStartedResponse)
 def install_model_url(req: ModelInstallUrlRequest):
@@ -88,6 +95,7 @@ def install_model_url(req: ModelInstallUrlRequest):
     jobs.run_worker_job(job, payload)
     return {"job_id": job.job_id}
 
+
 @app.post("/jobs/models/install_local_zip", response_model=JobStartedResponse)
 def install_model_zip(req: ModelInstallLocalRequest):
     job = jobs.create_job()
@@ -96,6 +104,7 @@ def install_model_zip(req: ModelInstallLocalRequest):
     payload["zip_path"] = req.path
     jobs.run_worker_job(job, payload)
     return {"job_id": job.job_id}
+
 
 @app.post("/jobs/models/install_local_files", response_model=JobStartedResponse)
 def install_model_files(req: ModelInstallLocalRequest):
@@ -107,12 +116,14 @@ def install_model_files(req: ModelInstallLocalRequest):
     jobs.run_worker_job(job, payload)
     return {"job_id": job.job_id}
 
+
 @app.get("/jobs/{job_id}", response_model=JobStatusResponse)
 def job_status(job_id: str):
     job = jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     return job.snapshot()
+
 
 @app.get("/jobs/{job_id}/events")
 async def job_events(job_id: str):

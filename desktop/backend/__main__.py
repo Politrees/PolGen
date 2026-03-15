@@ -5,7 +5,7 @@ import socket
 
 import uvicorn
 
-from polgen_backend.app import app
+from desktop.backend.app import app
 
 
 def pick_free_port(host: str) -> int:
