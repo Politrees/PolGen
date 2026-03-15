@@ -4,33 +4,30 @@ import sys
 import warnings
 from typing import Any
 
-# --- Unicode-safe stdio (fix Windows cp1252/cp866 issues with tqdm/Gradio) ---
+
 def _configure_unicode_stdio() -> None:
-    # Важно: tqdm пишет чаще в stderr. Нам нужно, чтобы и stdout и stderr не падали на Unicode.
     try:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
-        # Даже если не получилось — не валим запуск
         pass
 
 
 _configure_unicode_stdio()
 
-# Configuring the environment and logging
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Disable unnecessary TensorFlow logs
-os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"  # Disabling Gradio analytics
-logging.basicConfig(level=logging.WARNING)  # Disable all logs, except WARNING and above
-warnings.filterwarnings("ignore")  # Disable all warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
+logging.basicConfig(level=logging.WARNING)
+warnings.filterwarnings("ignore")
 
 import gradio as gr
 
 from assets.model_installer import check_and_install_models
 from assets.notebook_check import colab_check, kaggle_check
 from assets.version import __version__, __version_info__
-from gradio_ui.components.modules import output_message
+from gradio_ui.components.helpers import output_message
 from gradio_ui.inference import edge_tts_tab, inference_tab
 from gradio_ui.install import files_upload, install_hubert_tab, url_zip_download, zip_upload
 from gradio_ui.uvr import PolUVR_UI
@@ -50,14 +47,12 @@ def is_offline_mode() -> bool:
 
 
 def get_title() -> str:
-    """Формирует заголовок окна с версией."""
     base_title = f"PolGen v{__version__} - Politrees"
     if is_offline_mode():
         return f"{base_title} (offline)"
     return base_title
 
 
-# Gradio Interface
 with gr.Blocks(
     title=get_title(),
     css="footer{display:none !important}",
@@ -84,7 +79,6 @@ with gr.Blocks(
             gr.HTML(
                 "<center><h3>PolUVR не будет функционировать без подключения к интернету, если вы ранее не установили необходимые модели.</h3></center>",
             )
-        # https://github.com/Politrees/PolUVR?tab=readme-ov-file#integrate-our-interface-into-your-gradio-projects
         PolUVR_UI("models/UVR_models", "output/UVR_output")
 
     with gr.Tab("Загрузка моделей"):
@@ -128,7 +122,6 @@ def get_value_from_args(key: str, default: Any = None) -> Any:
 if __name__ == "__main__":
     print("Среда запуска: ", "Jupyter Notebook" if RUN_FROM_JUPYTER_NOTEBOOKS else "LocalHost")
 
-    # Красивый вывод версии
     print(f"\n╔{'═' * 42}╗")
     print(f"║{'PolGen v' + __version__:^42}║")
     if __version_info__["is_prerelease"]:
@@ -136,7 +129,7 @@ if __name__ == "__main__":
     print(f"╚{'═' * 42}╝\n")
 
     print("Запуск интерфейса PolGen. Подождите...")
-    check_and_install_models()  # Checking and installing models
+    check_and_install_models()
 
     port = int(get_value_from_args("--port", DEFAULT_PORT))
     server = get_value_from_args("--server-name", DEFAULT_SERVER_NAME)

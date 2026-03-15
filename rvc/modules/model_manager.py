@@ -3,24 +3,12 @@ import shutil
 import sys
 import zipfile
 
+from rvc.lib.progress import notify_progress
 from rvc.modules.download_source import download_file
 
 # Путь к директории, где будут храниться модели RVC
 rvc_models_dir = os.path.join(os.getcwd(), "models", "RVC_models")
 os.makedirs(rvc_models_dir, exist_ok=True)
-
-
-def _notify_progress(progress, value, message):
-    """Безопасный вызов progress callback (поддерживает любой callable или None)."""
-    if progress is None:
-        return
-    try:
-        progress(value, desc=message)
-    except TypeError:
-        try:
-            progress(value, message)
-        except Exception:
-            pass
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -29,14 +17,7 @@ def _notify_progress(progress, value, message):
 
 
 def extract_zip(extraction_folder, zip_name, delete_zip=True):
-    """Распаковывает zip-файл и находит файлы модели (.pth и .index).
-
-    Args:
-        extraction_folder: Путь к папке для распаковки.
-        zip_name: Путь к ZIP-файлу.
-        delete_zip: Удалить ZIP-файл после распаковки (по умолчанию True).
-
-    """
+    """Распаковывает zip-файл и находит файлы модели (.pth и .index)."""
     os.makedirs(extraction_folder, exist_ok=True)
     with zipfile.ZipFile(zip_name, "r") as zip_ref:
         zip_ref.extractall(extraction_folder)
@@ -61,15 +42,9 @@ def extract_zip(extraction_folder, zip_name, delete_zip=True):
 
 def rename_and_cleanup(extraction_folder, model_filepath, index_filepath):
     """Переименовывает файлы модели и удаляет пустые папки."""
-    os.rename(
-        model_filepath,
-        os.path.join(extraction_folder, os.path.basename(model_filepath)),
-    )
+    os.rename(model_filepath, os.path.join(extraction_folder, os.path.basename(model_filepath)))
     if index_filepath:
-        os.rename(
-            index_filepath,
-            os.path.join(extraction_folder, os.path.basename(index_filepath)),
-        )
+        os.rename(index_filepath, os.path.join(extraction_folder, os.path.basename(index_filepath)))
 
     for filepath in os.listdir(extraction_folder):
         full_path = os.path.join(extraction_folder, filepath)
@@ -79,27 +54,12 @@ def rename_and_cleanup(extraction_folder, model_filepath, index_filepath):
 
 # ═══════════════════════════════════════════════════════════════
 # Чистые функции (без Gradio-зависимостей)
-# Используются из Gradio UI, Desktop backend и CLI
 # ═══════════════════════════════════════════════════════════════
 
 
 def install_from_url(url, model_name, progress=None):
-    """Скачивает модель по URL и устанавливает.
-
-    Args:
-        url: URL для скачивания ZIP-файла.
-        model_name: Имя модели (имя папки).
-        progress: Callable(percent, desc="...") для отображения прогресса.
-
-    Returns:
-        str: Сообщение об успешной установке.
-
-    Raises:
-        FileExistsError: Если модель с таким именем уже существует.
-        FileNotFoundError: Если .pth не найден в ZIP.
-
-    """
-    _notify_progress(progress, 0, f"[~] Загрузка голосовой модели {model_name}...")
+    """Скачивает модель по URL и устанавливает."""
+    notify_progress(progress, 0, f"[~] Загрузка голосовой модели {model_name}...")
     zip_name = os.path.join(rvc_models_dir, model_name + ".zip")
     extraction_folder = os.path.join(rvc_models_dir, model_name)
 
@@ -107,20 +67,13 @@ def install_from_url(url, model_name, progress=None):
         raise FileExistsError(f"Директория голосовой модели {model_name} уже существует! Выберите другое имя.")
 
     download_file(url, zip_name, progress)
-    _notify_progress(progress, 0.8, "[~] Распаковка zip-файла...")
+    notify_progress(progress, 0.8, "[~] Распаковка zip-файла...")
     extract_zip(extraction_folder, zip_name, delete_zip=True)
     return f"[+] Модель {model_name} успешно загружена!"
 
 
 def install_from_zip_path(zip_path, model_name, progress=None):
-    """Устанавливает модель из ZIP-файла по строковому пути.
-
-    Args:
-        zip_path: Путь к ZIP-файлу (строка). Файл НЕ удаляется.
-        model_name: Имя модели.
-        progress: Callable для прогресса.
-
-    """
+    """Устанавливает модель из ZIP-файла по строковому пути."""
     extraction_folder = os.path.join(rvc_models_dir, model_name)
 
     if os.path.exists(extraction_folder):
@@ -129,21 +82,13 @@ def install_from_zip_path(zip_path, model_name, progress=None):
     if not os.path.exists(zip_path):
         raise FileNotFoundError(f"ZIP файл не найден: {zip_path}")
 
-    _notify_progress(progress, 0.8, "[~] Распаковка zip-файла...")
+    notify_progress(progress, 0.8, "[~] Распаковка zip-файла...")
     extract_zip(extraction_folder, zip_path, delete_zip=False)
     return f"[+] Модель {model_name} успешно загружена!"
 
 
 def install_from_files_path(pth_path, index_path, model_name, progress=None):
-    """Устанавливает модель из отдельных файлов по строковым путям.
-
-    Args:
-        pth_path: Путь к .pth файлу (строка, обязательный).
-        index_path: Путь к .index файлу (строка или None).
-        model_name: Имя модели.
-        progress: Callable для прогресса.
-
-    """
+    """Устанавливает модель из отдельных файлов по строковым путям."""
     extraction_folder = os.path.join(rvc_models_dir, model_name)
 
     if os.path.exists(extraction_folder):
@@ -154,11 +99,11 @@ def install_from_files_path(pth_path, index_path, model_name, progress=None):
 
     os.makedirs(extraction_folder, exist_ok=True)
 
-    _notify_progress(progress, 0.4, "[~] Копирование .pth файла...")
+    notify_progress(progress, 0.4, "[~] Копирование .pth файла...")
     shutil.copyfile(pth_path, os.path.join(extraction_folder, os.path.basename(pth_path)))
 
     if index_path and os.path.exists(index_path):
-        _notify_progress(progress, 0.8, "[~] Копирование .index файла...")
+        notify_progress(progress, 0.8, "[~] Копирование .index файла...")
         shutil.copyfile(index_path, os.path.join(extraction_folder, os.path.basename(index_path)))
 
     return f"[+] Модель {model_name} успешно загружена!"
@@ -170,19 +115,10 @@ def install_from_files_path(pth_path, index_path, model_name, progress=None):
 
 
 def delete_model(model_name):
-    """Удаляет папку модели RVC по имени.
-
-    Args:
-        model_name: Имя модели (имя папки внутри RVC_models).
-
-    Raises:
-        FileNotFoundError: Если модель не найдена.
-
-    """
+    """Удаляет папку модели RVC по имени."""
     if not model_name or not model_name.strip():
         raise ValueError("Имя модели пустое")
 
-    # Защита от path traversal
     if ".." in model_name or "/" in model_name or "\\" in model_name:
         raise ValueError(f"Некорректное имя модели: {model_name}")
 
@@ -190,19 +126,17 @@ def delete_model(model_name):
     if not os.path.isdir(target_dir):
         raise FileNotFoundError(f"Модель не найдена: {model_name}")
 
-    # Удаляем модель из кеша перед удалением файлов
     try:
         from rvc.infer.infer import get_model_cache
-
         get_model_cache().invalidate_rvc_model(model_name.strip())
     except ImportError:
-        pass  # Кеш может быть недоступен при вызове из CLI
+        pass
 
     shutil.rmtree(target_dir, ignore_errors=True)
 
 
 # ═══════════════════════════════════════════════════════════════
-# CLI (python -m rvc.modules.model_manager "url" "name")
+# CLI
 # ═══════════════════════════════════════════════════════════════
 
 
@@ -215,10 +149,7 @@ def main():
     dir_name = sys.argv[2]
 
     try:
-        class ConsoleProgress:
-            def __call__(self, progress, desc=""):
-                print(desc)
-
+        from rvc.lib.progress import ConsoleProgress
         result = install_from_url(url, dir_name, progress=ConsoleProgress())
         print(result)
     except Exception as e:

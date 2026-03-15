@@ -4,7 +4,7 @@ import os
 import sys
 import warnings
 
-# --- Unicode-safe stdio ---
+
 def _configure_unicode_stdio() -> None:
     try:
         if hasattr(sys.stdout, "reconfigure"):
@@ -17,14 +17,14 @@ def _configure_unicode_stdio() -> None:
 
 _configure_unicode_stdio()
 
-# Configuring the environment and logging
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Disable unnecessary TensorFlow logs
-os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"  # Disabling Gradio analytics
-logging.basicConfig(level=logging.WARNING)  # Disable all logs, except WARNING and above
-warnings.filterwarnings("ignore")  # Disable all warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
+logging.basicConfig(level=logging.WARNING)
+warnings.filterwarnings("ignore")
 
 from assets.model_installer import check_and_install_models
 from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
+from rvc.lib.progress import ConsoleProgress
 
 
 def strtobool(val: str) -> bool:
@@ -76,6 +76,8 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
+    progress = ConsoleProgress()
+
     common_params = {
         "rvc_model": args.rvc_model,
         "f0_method": args.f0_method,
@@ -94,6 +96,7 @@ def main():
         "audio_upscaling": args.upscale,
         "stereo_sound": args.stereo,
         "output_format": args.output_format,
+        "progress": progress,
     }
 
     if args.command == "rvc":

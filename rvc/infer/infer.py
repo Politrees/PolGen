@@ -6,7 +6,6 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any
 
-import edge_tts
 import torch
 
 from rvc.infer.config import Config
@@ -14,6 +13,7 @@ from rvc.infer.pipeline import VC
 from rvc.lib.algorithm.synthesizers import Synthesizer
 from rvc.lib.fairseq import load_model
 from rvc.lib.my_utils import load_audio, save_audio
+from rvc.lib.progress import display_progress
 from rvc.modules.audio_upscaler import upscale
 
 # Определяем пути к папкам и файлам (константы)
@@ -35,21 +35,6 @@ def clear_gpu_cache():
         torch.cuda.empty_cache()
     if torch.backends.mps.is_available():
         torch.mps.empty_cache()
-
-
-def display_progress(percent, message, is_print, progress=None):
-    """
-    progress — любой объект/функция, которую можно вызвать как:
-      progress(percent, desc="...")
-    """
-    if is_print:
-        print(message)
-    if progress is not None:
-        try:
-            progress(percent, desc=message)
-        except TypeError:
-            # на случай если progress ожидает (percent, message)
-            progress(percent, message)
 
 
 def load_rvc_model(rvc_model):
@@ -95,7 +80,7 @@ def get_vc(model_path):
 
 
 # ═══════════════════════════════════════════════════════════════
-# Model Cache — кеширование моделей в GPU/CPU памяти между вызовами
+# Model Cache
 # ═══════════════════════════════════════════════════════════════
 
 
@@ -112,11 +97,7 @@ class _CachedRvcModel:
 
 
 class ModelCache:
-    """LRU-кеш для HuBERT и RVC моделей.
-
-    HuBERT загружается один раз и переиспользуется (он общий для всех RVC моделей).
-    RVC модели хранятся с LRU-вытеснением (макс. кол-во зависит от VRAM).
-    """
+    """LRU-кеш для HuBERT и RVC моделей."""
 
     def __init__(self, max_rvc_models: int = 2):
         self._hubert: Any | None = None
@@ -125,13 +106,11 @@ class ModelCache:
         self._lock = threading.Lock()
 
     def get_hubert(self) -> Any:
-        """Возвращает HuBERT модель. Загружает при первом вызове."""
         if self._hubert is None:
             self._hubert = load_hubert(HUBERT_BASE_PATH)
         return self._hubert
 
     def invalidate_hubert(self) -> None:
-        """Сбрасывает кеш HuBERT (после установки кастомной модели)."""
         with self._lock:
             if self._hubert is not None:
                 del self._hubert
@@ -140,36 +119,27 @@ class ModelCache:
                 print("[Cache] HuBERT кеш сброшен")
 
     def get_rvc_model(self, model_name: str) -> _CachedRvcModel:
-        """Возвращает RVC модель. Загружает и кеширует при первом вызове."""
-        # Быстрая проверка — модель уже в кеше?
         with self._lock:
             if model_name in self._rvc_models:
                 self._rvc_models.move_to_end(model_name)
                 return self._rvc_models[model_name]
 
-        # Загрузка вне лока (IO + GPU transfer может быть долгим)
         model_path, index_path = load_rvc_model(model_name)
         cpt, version, net_g, tgt_sr, vc, use_f0 = get_vc(model_path)
-        del cpt  # checkpoint dict больше не нужен (веса уже в net_g)
+        del cpt
 
         cached = _CachedRvcModel(
-            version=version,
-            net_g=net_g,
-            tgt_sr=tgt_sr,
-            vc=vc,
-            use_f0=use_f0,
-            index_path=index_path,
+            version=version, net_g=net_g, tgt_sr=tgt_sr,
+            vc=vc, use_f0=use_f0, index_path=index_path,
         )
 
         with self._lock:
-            # Double-check: другой поток мог загрузить эту модель пока мы грузили
             if model_name in self._rvc_models:
                 self._rvc_models.move_to_end(model_name)
                 del cached
                 clear_gpu_cache()
                 return self._rvc_models[model_name]
 
-            # Вытесняем самую старую модель если кеш полон
             while len(self._rvc_models) >= self._max_rvc:
                 evicted_name, evicted = self._rvc_models.popitem(last=False)
                 del evicted
@@ -182,7 +152,6 @@ class ModelCache:
         return cached
 
     def invalidate_rvc_model(self, model_name: str) -> None:
-        """Удаляет конкретную RVC модель из кеша."""
         with self._lock:
             if model_name in self._rvc_models:
                 evicted = self._rvc_models.pop(model_name)
@@ -191,7 +160,6 @@ class ModelCache:
                 print(f"[Cache] Модель '{model_name}' удалена из кеша")
 
     def clear_all(self) -> None:
-        """Полный сброс кеша (HuBERT + все RVC модели)."""
         with self._lock:
             self._rvc_models.clear()
             self._hubert = None
@@ -200,15 +168,13 @@ class ModelCache:
 
     @property
     def cached_model_names(self) -> list[str]:
-        """Список имён закешированных RVC моделей."""
         with self._lock:
             return list(self._rvc_models.keys())
 
 
 def _detect_max_cached_models() -> int:
-    """Определяет лимит кеша RVC моделей по объёму VRAM."""
     if config.gpu_mem is None:
-        return 1  # CPU/MPS — кешируем минимум
+        return 1
     if config.gpu_mem <= 4:
         return 1
     if config.gpu_mem <= 8:
@@ -216,21 +182,23 @@ def _detect_max_cached_models() -> int:
     return 3
 
 
-# Глобальный кеш моделей
 _model_cache = ModelCache(max_rvc_models=_detect_max_cached_models())
 
 
 def get_model_cache() -> ModelCache:
-    """Доступ к глобальному кешу моделей (для внешних модулей)."""
     return _model_cache
 
 
+# ═══════════════════════════════════════════════════════════════
+# TTS (ленивый импорт edge_tts)
 # ═══════════════════════════════════════════════════════════════
 
 
 async def text_to_speech(voice, text, rate, volume, pitch, output_path):
     if not -100 <= rate <= 100 or not -100 <= volume <= 100 or not -100 <= pitch <= 100:
         raise ValueError("Параметры Rate, Volume и Pitch должны быть в диапазоне от -100 до +100.")
+
+    import edge_tts  # Ленивый импорт — не грузим при CLI/Desktop если TTS не используется
 
     communicate = edge_tts.Communicate(
         voice=voice,
@@ -240,6 +208,11 @@ async def text_to_speech(voice, text, rate, volume, pitch, output_path):
         pitch=f"{pitch:+d}Hz",
     )
     await communicate.save(output_path)
+
+
+# ═══════════════════════════════════════════════════════════════
+# RVC Infer
+# ═══════════════════════════════════════════════════════════════
 
 
 def rvc_infer(

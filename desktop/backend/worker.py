@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -7,12 +8,10 @@ if TYPE_CHECKING:
 
 
 class _JobProgressAdapter:
-    """Адаптер: преобразует Job.update_progress() в интерфейс progress(percent, desc=...).
+    """Адаптер: преобразует Job.update_progress() в единый ProgressCallback протокол.
 
-    Совместим с:
-    - gr.Progress (Gradio): progress(percent, desc="...")
-    - _notify_progress (model_manager): progress(value, desc=message) / progress(value, message)
-    - _call_progress (download_source): progress(value, desc=message) / progress(value, message)
+    Совместим с rvc.lib.progress.ProgressCallback:
+        progress(percent, desc="...")
     """
 
     def __init__(self, job: Job) -> None:
@@ -23,44 +22,27 @@ class _JobProgressAdapter:
 
 
 def run_job(job: Job, payload: dict) -> None:
-    """Выполняет задачу в текущем потоке. Вызывается из JobManager._run_one().
-
-    Модели кешируются в памяти между вызовами (см. rvc/infer/infer.py ModelCache).
-    Результат записывается в job.result, ошибки — в job.error.
-    """
+    """Выполняет задачу в текущем потоке. Вызывается из JobManager._run_one()."""
     mode = payload.get("mode")
     progress = _JobProgressAdapter(job)
 
-    # Проверяем наличие базовых моделей (idempotent — пропускает если файлы уже есть)
     from assets.model_installer import check_and_install_models
-
     check_and_install_models()
 
-    if mode == "convert":
-        _handle_convert(job, payload, progress)
-        return
+    handlers = {
+        "convert": _handle_convert,
+        "tts_convert": _handle_tts_convert,
+        "install_rvc_url": _handle_install_url,
+        "install_rvc_zip": _handle_install_zip,
+        "install_rvc_files": _handle_install_files,
+        "uvr_separate": _handle_uvr_separate,
+    }
 
-    if mode == "tts_convert":
-        _handle_tts_convert(job, payload, progress)
-        return
+    handler = handlers.get(mode)
+    if handler is None:
+        raise ValueError(f"Неизвестный mode: {mode!r}")
 
-    if mode == "install_rvc_url":
-        _handle_install_url(job, payload, progress)
-        return
-
-    if mode == "install_rvc_zip":
-        _handle_install_zip(job, payload, progress)
-        return
-
-    if mode == "install_rvc_files":
-        _handle_install_files(job, payload, progress)
-        return
-
-    if mode == "uvr_separate":
-        _handle_uvr_separate(job, payload, progress)
-        return
-
-    raise ValueError(f"Неизвестный mode: {mode!r}")
+    handler(job, payload, progress)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -133,21 +115,18 @@ def _handle_tts_convert(job: Job, payload: dict, progress: _JobProgressAdapter) 
 
 def _handle_install_url(job: Job, payload: dict, progress: _JobProgressAdapter) -> None:
     from rvc.modules.model_manager import install_from_url
-
     result = install_from_url(payload["url"], payload["model_name"], progress=progress)
     job.result = {"message": result}
 
 
 def _handle_install_zip(job: Job, payload: dict, progress: _JobProgressAdapter) -> None:
     from rvc.modules.model_manager import install_from_zip_path
-
     result = install_from_zip_path(payload["zip_path"], payload["model_name"], progress=progress)
     job.result = {"message": result}
 
 
 def _handle_install_files(job: Job, payload: dict, progress: _JobProgressAdapter) -> None:
     from rvc.modules.model_manager import install_from_files_path
-
     result = install_from_files_path(
         payload["pth_path"],
         payload.get("index_path"),
@@ -234,9 +213,7 @@ def _handle_uvr_separate(job: Job, payload: dict, progress: _JobProgressAdapter)
     else:
         raise ValueError(f"Неизвестная архитектура UVR: {arch!r}")
 
-    # Формируем полные пути к стемам
     stem_paths = [os.path.join(out_dir, f) for f in results]
-
     job.result = {
         "output_dir": out_dir,
         "stems": stem_paths,
