@@ -2,7 +2,7 @@ import gradio as gr
 
 from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
 from rvc.modules.edge_voices import edge_voices
-from tabs.components.modules import (
+from gradio_ui.components.modules import (
     OUTPUT_FORMAT,
     get_folders,
     process_file_upload,
@@ -13,7 +13,7 @@ from tabs.components.modules import (
     update_models_list,
     update_visible,
 )
-from tabs.components.settings import settings
+from gradio_ui.components.settings import settings
 
 
 def inference_tab():
