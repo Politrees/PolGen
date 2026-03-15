@@ -21,6 +21,13 @@ class _JobProgressAdapter:
         self._job.update_progress(float(percent), str(desc))
 
 
+def _ensure_absolute(path: str) -> str:
+    """Конвертирует относительный путь в абсолютный от cwd."""
+    if os.path.isabs(path):
+        return path
+    return os.path.join(os.getcwd(), path)
+
+
 def run_job(job: Job, payload: dict) -> None:
     """Выполняет задачу в текущем потоке. Вызывается из JobManager._run_one()."""
     mode = payload.get("mode")
@@ -152,11 +159,15 @@ def _handle_uvr_separate(job: Job, payload: dict, progress: _JobProgressAdapter)
         separate_demucs,
     )
 
+    # Гарантируем абсолютные пути — иначе convertFileSrc и open_file_default не работают
+    model_dir = _ensure_absolute(payload.get("model_dir", "models/UVR_models"))
+    output_dir = _ensure_absolute(payload.get("output_dir", "output/UVR_output"))
+
     common = {
         "audio_path": payload["audio_path"],
         "model_key": payload["model_key"],
-        "model_dir": payload.get("model_dir", "models/UVR_models"),
-        "output_dir": payload.get("output_dir", "output/UVR_output"),
+        "model_dir": model_dir,
+        "output_dir": output_dir,
         "output_format": payload.get("output_format", "wav"),
         "norm_threshold": payload.get("norm_threshold", 0.9),
         "amp_threshold": payload.get("amp_threshold", 0.0),
@@ -213,7 +224,10 @@ def _handle_uvr_separate(job: Job, payload: dict, progress: _JobProgressAdapter)
     else:
         raise ValueError(f"Неизвестная архитектура UVR: {arch!r}")
 
-    stem_paths = [os.path.join(out_dir, f) for f in results]
+    # out_dir уже абсолютный (построен от абсолютного output_dir)
+    out_dir = os.path.abspath(out_dir)
+    stem_paths = [os.path.abspath(os.path.join(out_dir, f)) for f in results]
+
     job.result = {
         "output_dir": out_dir,
         "stems": stem_paths,

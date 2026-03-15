@@ -27,6 +27,7 @@
   $: outputDisplay = typeof outPath === "string" ? basename(outPath) : "-";
   $: outputTitle = typeof outPath === "string" ? outPath : "";
   $: hasStems = Array.isArray(job?.result?.stems) && job.result.stems.length > 0;
+  $: uvrOutputDir = typeof job?.result?.output_dir === "string" ? job.result.output_dir : null;
 
   const statusIcons: Record<string, string> = {
     idle: "⏳",
@@ -69,19 +70,32 @@
   function openResult() {
     if (outPath) openFilePath(outPath);
   }
+
+  function openResultFolder() {
+    if (uvrOutputDir) {
+      // UVR: открываем конкретную папку со стемами
+      openFilePath(uvrOutputDir);
+    } else {
+      // RVC/TTS: открываем общую папку output/RVC_output
+      openOutputDir();
+    }
+  }
 </script>
 
 <div class="card">
   <div class="panel-header">
     <h2>Задача</h2>
-    {#if isDone && outPath}
-      <button class="btn result-btn" on:click={openResult} title={outPath}>
-        📄 Открыть результат
-      </button>
-    {:else if isDone && hasStems}
-      <button class="btn result-btn" on:click={openOutputDir}>
-        📁 Открыть папку
-      </button>
+    {#if isDone}
+      <div class="panel-header-actions">
+        {#if outPath}
+          <button class="btn result-btn" on:click={openResult} title={outPath}>
+            📄 Файл
+          </button>
+        {/if}
+        <button class="btn result-btn" on:click={openResultFolder}>
+          📁 Папка
+        </button>
+      </div>
     {/if}
   </div>
 
@@ -141,6 +155,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+  }
+
+  .panel-header-actions {
+    display: flex;
+    gap: 4px;
   }
 
   .result-btn {

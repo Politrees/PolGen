@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { uvrForm, uvrModels, uvrFormats, uvrStems, toasts } from "$lib/state";
-  import { postJob, loadUvrModels, clearUvrModels } from "$lib/api";
+  import { uvrForm, uvrModels, uvrFormats, uvrStems, toasts, currentJob } from "$lib/state";
+  import { postJob, loadUvrModels, clearUvrModels, openFilePath } from "$lib/api";
   import { UVR_ARCHS } from "$lib/types";
   import type { UvrArch } from "$lib/types";
+  import { basename } from "$lib/utils";
   import AudioDropZone from "../components/AudioDropZone.svelte";
   import StemPlayer from "../components/StemPlayer.svelte";
   import Accordion from "../components/Accordion.svelte";
@@ -12,6 +13,7 @@
   $: archModels = $uvrModels[$uvrForm.arch] ?? [];
   $: formats = $uvrFormats;
   $: stems = $uvrStems;
+  $: outputDir = $currentJob?.result?.output_dir ?? null;
 
   function setArch(arch: UvrArch) {
     $uvrForm.arch = arch;
@@ -54,6 +56,12 @@
       return;
     }
     await postJob("/jobs/uvr_separate", $uvrForm);
+  }
+
+  function openStemsFolder() {
+    if (outputDir) {
+      openFilePath(outputDir);
+    }
   }
 </script>
 
@@ -187,7 +195,16 @@
     <div class="hr" />
     <div class="stems-header">
       <h2>Результат</h2>
-      <span class="stems-count">{stems.length} {stems.length === 1 ? "стем" : stems.length < 5 ? "стема" : "стемов"}</span>
+      <div class="stems-header-actions">
+        <span class="stems-count">
+          {stems.length} {stems.length === 1 ? "стем" : stems.length < 5 ? "стема" : "стемов"}
+        </span>
+        {#if outputDir}
+          <button class="stems-folder-btn" on:click={openStemsFolder} title="Открыть папку со стемами">
+            📁 Папка
+          </button>
+        {/if}
+      </div>
     </div>
     <div class="stems-grid">
       {#each stems as stem (stem)}
@@ -240,6 +257,12 @@
     gap: 8px;
   }
 
+  .stems-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .stems-count {
     font-size: 11px;
     color: var(--text-muted);
@@ -247,6 +270,25 @@
     padding: 3px 10px;
     border-radius: 20px;
     border: 1px solid var(--border);
+  }
+
+  .stems-folder-btn {
+    all: unset;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    transition: all 0.15s ease;
+  }
+
+  .stems-folder-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.15);
   }
 
   .stems-grid {
