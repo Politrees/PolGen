@@ -36,10 +36,6 @@ class ProgressCallback(Protocol):
 def notify_progress(progress: ProgressCallback | None, value: float, message: str) -> None:
     """Безопасный вызов progress callback.
 
-    Пытается вызвать как progress(value, desc=message),
-    при ошибке — как progress(value, message).
-    Если progress is None — ничего не делает.
-
     Args:
         progress: Callback или None.
         value: Значение прогресса (0.0 — 1.0).
@@ -64,6 +60,13 @@ def display_progress(
 ) -> None:
     """Уведомляет о прогрессе через callback и/или print.
 
+    Логика:
+    - is_print=True: всегда печатает в stdout (серверный лог для Gradio/Desktop,
+      основной вывод для CLI).
+    - progress callback: всегда вызывается (обновляет UI в Gradio, SSE в Desktop).
+    - ConsoleProgress: НЕ печатает если is_print=True (избегает дублирования),
+      печатает только progress-only сообщения (is_print=False).
+
     Args:
         percent: Значение прогресса (0.0 — 1.0).
         message: Описание текущего шага.
@@ -72,12 +75,27 @@ def display_progress(
     """
     if is_print:
         print(message)
+        # Помечаем для ConsoleProgress, что сообщение уже напечатано
+        if isinstance(progress, ConsoleProgress):
+            progress.mark_printed(message)
+
     notify_progress(progress, percent, message)
 
 
 class ConsoleProgress:
-    """Progress-callback для CLI: просто печатает сообщения в stdout."""
+    """Progress-callback для CLI: печатает сообщения в stdout.
+
+    Избегает дублирования: если display_progress уже напечатал сообщение
+    (is_print=True), ConsoleProgress его пропускает.
+    """
+
+    def __init__(self) -> None:
+        self._already_printed: set[str] = set()
 
     def __call__(self, value: float, desc: str = "", **kwargs) -> None:
-        if desc:
+        if desc and desc not in self._already_printed:
             print(desc)
+
+    def mark_printed(self, message: str) -> None:
+        """Помечает сообщение как уже напечатанное (вызывается из display_progress)."""
+        self._already_printed.add(message)
