@@ -5,7 +5,7 @@ import urllib.request
 
 import gradio as gr
 
-from rvc.modules.model_manager import (
+from gradio_ui.wrappers import (
     download_from_url,
     upload_separate_files,
     upload_zip_file,

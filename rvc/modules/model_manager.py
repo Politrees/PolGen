@@ -3,8 +3,6 @@ import shutil
 import sys
 import zipfile
 
-import gradio as gr
-
 from rvc.modules.download_source import download_file
 
 # Путь к директории, где будут храниться модели RVC
@@ -13,7 +11,7 @@ os.makedirs(rvc_models_dir, exist_ok=True)
 
 
 def _notify_progress(progress, value, message):
-    """Безопасный вызов progress callback (поддерживает gr.Progress, _JobProgressAdapter, callable, None)."""
+    """Безопасный вызов progress callback (поддерживает любой callable или None)."""
     if progress is None:
         return
     try:
@@ -167,39 +165,6 @@ def install_from_files_path(pth_path, index_path, model_name, progress=None):
 
 
 # ═══════════════════════════════════════════════════════════════
-# Gradio-обёртки (используются в tabs/install.py)
-# Делегируют чистым функциям, оборачивая ошибки в gr.Error
-# ═══════════════════════════════════════════════════════════════
-
-
-def download_from_url(url, dir_name, progress=gr.Progress()):
-    """Gradio-обёртка: скачивает модель по URL."""
-    try:
-        return install_from_url(url, dir_name, progress)
-    except Exception as e:
-        raise gr.Error(f"Ошибка при загрузке модели: {e!s}")
-
-
-def upload_zip_file(zip_path, dir_name, progress=gr.Progress()):
-    """Gradio-обёртка: устанавливает модель из загруженного ZIP."""
-    try:
-        zip_name = zip_path.name  # Gradio File object → строковый путь
-        return install_from_zip_path(zip_name, dir_name, progress)
-    except Exception as e:
-        raise gr.Error(f"Ошибка при загрузке модели: {e!s}")
-
-
-def upload_separate_files(pth_file, index_file, dir_name, progress=gr.Progress()):
-    """Gradio-обёртка: устанавливает модель из отдельных файлов."""
-    try:
-        pth_path = pth_file.name if pth_file else None
-        index_path = index_file.name if index_file else None
-        return install_from_files_path(pth_path, index_path, dir_name, progress)
-    except Exception as e:
-        raise gr.Error(f"Ошибка при загрузке модели: {e!s}")
-
-
-# ═══════════════════════════════════════════════════════════════
 # Удаление модели
 # ═══════════════════════════════════════════════════════════════
 
@@ -250,14 +215,13 @@ def main():
     dir_name = sys.argv[2]
 
     try:
-        # Создаем "фейковый" progress-объект для консоли
         class ConsoleProgress:
             def __call__(self, progress, desc=""):
                 print(desc)
 
-        result = download_from_url(url, dir_name, progress=ConsoleProgress())
+        result = install_from_url(url, dir_name, progress=ConsoleProgress())
         print(result)
-    except gr.Error as e:
+    except Exception as e:
         print(f"Ошибка: {e!s}")
         sys.exit(1)
 

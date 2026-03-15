@@ -1,6 +1,6 @@
 import gradio as gr
 
-from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
+from gradio_ui.wrappers import rvc_infer, rvc_edgetts_infer
 from rvc.modules.edge_voices import edge_voices
 from gradio_ui.components.modules import (
     OUTPUT_FORMAT,

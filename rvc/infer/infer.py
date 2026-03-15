@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import edge_tts
-import gradio as gr
 import torch
 
 from rvc.infer.config import Config
@@ -259,10 +258,10 @@ def rvc_infer(
     autotune_tonic="C",
     autotune_scale="chromatic",
     autotune_strength=1.0,
-    audio_upscaling=False,  # FlashSR
+    audio_upscaling=False,
     stereo_sound=False,
     output_format="wav",
-    progress=gr.Progress(track_tqdm=True),
+    progress=None,
 ):
     if not rvc_model:
         raise ValueError("Не выбрана модель для RVC-инференса")
@@ -353,7 +352,7 @@ def rvc_edgetts_infer(
     tts_pitch=0,
     # FlashSR
     audio_upscaling=False,
-    progress=gr.Progress(track_tqdm=True),
+    progress=None,
 ):
     if not tts_text:
         raise ValueError("Введите текст!")
