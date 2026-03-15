@@ -1,23 +1,13 @@
 <script lang="ts">
-  import { open as openDialog } from "@tauri-apps/api/dialog";
   import { rvcForm } from "$lib/state";
   import { postJob } from "$lib/api";
   import { toasts } from "$lib/state";
   import { OUTPUT_FORMATS } from "$lib/types";
+  import AudioDropZone from "../components/AudioDropZone.svelte";
   import ModelSelect from "../components/ModelSelect.svelte";
   import PitchBlock from "../components/PitchBlock.svelte";
   import ConversionSettings from "../components/ConversionSettings.svelte";
   import Field from "../components/Field.svelte";
-
-  async function pickFile() {
-    const sel = await openDialog({
-      multiple: false,
-      filters: [{ name: "Audio", extensions: ["mp3", "wav", "flac", "ogg", "m4a"] }],
-    });
-    if (typeof sel === "string") {
-      $rvcForm.input_path = sel;
-    }
-  }
 
   async function generate() {
     if (!$rvcForm.input_path.trim()) { toasts.show("Выберите входной аудио-файл"); return; }
@@ -29,12 +19,10 @@
 <div class="card">
   <h2>RVC • Конвертация</h2>
 
-  <Field label="Входной файл">
-    <div class="row">
-      <input type="text" bind:value={$rvcForm.input_path} placeholder="Путь к аудио…" />
-      <button class="btn" on:click={pickFile}>Выбрать</button>
-    </div>
-  </Field>
+  <AudioDropZone
+    bind:value={$rvcForm.input_path}
+    placeholder="Перетащите аудиофайл или нажмите для выбора"
+  />
 
   <ModelSelect bind:value={$rvcForm.rvc_model} />
 

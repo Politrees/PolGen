@@ -23,6 +23,8 @@
     if (!$ttsForm.rvc_model.trim()) { toasts.show("Выберите RVC модель"); return; }
     await postJob("/jobs/tts_convert", $ttsForm);
   }
+
+  $: charCount = $ttsForm.tts_text.length;
 </script>
 
 <div class="card">
@@ -30,25 +32,35 @@
 
   <ModelSelect bind:value={$ttsForm.rvc_model} />
 
-  <Field label="Язык">
-    <select bind:value={$ttsForm.language} on:change={onLangChange}>
-      {#each langs as lang}
-        <option value={lang}>{lang}</option>
-      {/each}
-    </select>
-  </Field>
+  <div class="row">
+    <Field label="Язык">
+      <select bind:value={$ttsForm.language} on:change={onLangChange}>
+        {#each langs as lang}
+          <option value={lang}>{lang}</option>
+        {/each}
+      </select>
+    </Field>
 
-  <Field label="Голос TTS">
-    <select bind:value={$ttsForm.tts_voice}>
-      {#each voices as v}
-        <option value={v}>{v}</option>
-      {/each}
-    </select>
-  </Field>
+    <Field label="Голос TTS">
+      <select bind:value={$ttsForm.tts_voice}>
+        {#each voices as v}
+          <option value={v}>{v}</option>
+        {/each}
+      </select>
+    </Field>
+  </div>
 
-  <Field label="Текст">
-    <textarea bind:value={$ttsForm.tts_text} placeholder="Введите текст…" rows="5" />
-  </Field>
+  <div class="field">
+    <div class="textarea-header">
+      <label>Текст</label>
+      <span class="char-count">{charCount} символов</span>
+    </div>
+    <textarea
+      bind:value={$ttsForm.tts_text}
+      placeholder="Введите текст для синтеза речи…"
+      rows="5"
+    />
+  </div>
 
   <Accordion title="Настройки TTS">
     <Slider label="Скорость речи" bind:value={$ttsForm.tts_rate} min={-100} max={100} step={1} />
@@ -87,3 +99,27 @@
 
   <button class="btn primary" on:click={generate}>Генерировать</button>
 </div>
+
+<style>
+  .textarea-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  .textarea-header label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .char-count {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    opacity: 0.7;
+  }
+</style>

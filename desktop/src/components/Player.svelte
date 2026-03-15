@@ -8,6 +8,7 @@
   let playing = false;
   let currentTime = 0;
   let duration = 0;
+  let volume = 1;
   let seeking = false;
   let audioSrc = "";
 
@@ -64,6 +65,14 @@
     if (audio) audio.currentTime = val;
     currentTime = val;
   }
+
+  function onVolumeInput(e: Event) {
+    volume = parseFloat((e.target as HTMLInputElement).value);
+    if (audio) audio.volume = volume;
+  }
+
+  $: volumeIcon = volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊";
+  $: volumePct = `${Math.round(volume * 100)}%`;
 </script>
 
 <div class="player" class:player-active={enabled} class:player-playing={playing}>
@@ -110,6 +119,20 @@
     </div>
 
     <span class="player-time">{formatTime(duration)}</span>
+
+    <div class="player-volume">
+      <span class="volume-icon">{volumeIcon}</span>
+      <input
+        type="range"
+        class="volume-slider"
+        min="0"
+        max="1"
+        step="0.01"
+        value={volume}
+        style="--vol-pct: {volumePct}"
+        on:input={onVolumeInput}
+      />
+    </div>
   </div>
 
   <!-- Нижняя строка: инфо и действия -->
@@ -160,29 +183,22 @@
     overflow: hidden;
   }
 
-  .player audio {
-    display: none;
-  }
+  .player audio { display: none; }
 
-  /* Активное состояние — трек загружен */
   .player-active {
     opacity: 1;
     border-top-color: rgba(35, 134, 54, 0.25);
   }
 
-  /* Градиентная подсветка сверху при активном треке */
   .player-active::before {
     content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     height: 1px;
     background: linear-gradient(90deg, transparent 0%, var(--accent) 30%, var(--accent-hover) 50%, var(--accent) 70%, transparent 100%);
     opacity: 0.6;
   }
 
-  /* Пульсация подсветки при воспроизведении */
   .player-playing::before {
     height: 2px;
     opacity: 1;
@@ -194,7 +210,6 @@
     50% { opacity: 1; }
   }
 
-  /* ===== Верхняя строка ===== */
   .player-controls {
     display: flex;
     align-items: center;
@@ -207,8 +222,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: 38px; height: 38px;
     border-radius: 50%;
     background: var(--accent);
     color: #fff;
@@ -221,9 +235,7 @@
     box-shadow: 0 0 16px rgba(35, 134, 54, 0.4);
     transform: scale(1.08);
   }
-  .player-play:active:not(:disabled) {
-    transform: scale(0.95);
-  }
+  .player-play:active:not(:disabled) { transform: scale(0.95); }
   .player-play:disabled {
     background: #161b22;
     cursor: default;
@@ -245,7 +257,6 @@
     flex-shrink: 0;
   }
 
-  /* Seek bar */
   .player-seek-wrap {
     flex: 1;
     display: flex;
@@ -263,21 +274,15 @@
     cursor: pointer;
     background: linear-gradient(
       to right,
-      var(--accent) 0%,
-      var(--accent) var(--progress, 0%),
-      #161b22 var(--progress, 0%),
-      #161b22 100%
+      var(--accent) 0%, var(--accent) var(--progress, 0%),
+      #161b22 var(--progress, 0%), #161b22 100%
     );
     transition: height 0.15s ease;
   }
-  .player-seek:hover {
-    height: 8px;
-  }
+  .player-seek:hover { height: 8px; }
   .player-seek::-webkit-slider-thumb {
     -webkit-appearance: none;
-    appearance: none;
-    width: 14px;
-    height: 14px;
+    width: 14px; height: 14px;
     border-radius: 50%;
     background: #fff;
     border: 2px solid var(--accent);
@@ -290,10 +295,7 @@
     box-shadow: 0 0 10px rgba(35, 134, 54, 0.4);
     transform: scale(1.2);
   }
-  .player-seek:disabled {
-    cursor: default;
-    opacity: 0.3;
-  }
+  .player-seek:disabled { cursor: default; opacity: 0.3; }
   .player-seek:disabled::-webkit-slider-thumb {
     background: #30363d;
     border-color: #30363d;
@@ -301,7 +303,49 @@
     transform: none;
   }
 
-  /* ===== Нижняя строка ===== */
+  /* Volume */
+  .player-volume {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .volume-icon {
+    font-size: 14px;
+    cursor: default;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .volume-slider {
+    width: 70px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(
+      to right,
+      var(--text-muted) 0%, var(--text-muted) var(--vol-pct, 100%),
+      #161b22 var(--vol-pct, 100%), #161b22 100%
+    );
+  }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  /* Bottom row */
   .player-info {
     display: flex;
     align-items: center;
@@ -359,7 +403,7 @@
     pointer-events: none;
   }
 
-  /* ===== Эквалайзер-анимация ===== */
+  /* EQ bars */
   .eq-bars {
     display: flex;
     align-items: flex-end;
@@ -375,25 +419,10 @@
     background: var(--accent-text);
   }
 
-  .eq-bars span:nth-child(1) {
-    animation: eq-bounce 0.45s ease-in-out infinite alternate;
-    height: 6px;
-  }
-  .eq-bars span:nth-child(2) {
-    animation: eq-bounce 0.55s ease-in-out infinite alternate;
-    animation-delay: 0.1s;
-    height: 10px;
-  }
-  .eq-bars span:nth-child(3) {
-    animation: eq-bounce 0.4s ease-in-out infinite alternate;
-    animation-delay: 0.2s;
-    height: 8px;
-  }
-  .eq-bars span:nth-child(4) {
-    animation: eq-bounce 0.5s ease-in-out infinite alternate;
-    animation-delay: 0.15s;
-    height: 5px;
-  }
+  .eq-bars span:nth-child(1) { animation: eq-bounce 0.45s ease-in-out infinite alternate; height: 6px; }
+  .eq-bars span:nth-child(2) { animation: eq-bounce 0.55s ease-in-out infinite alternate; animation-delay: 0.1s; height: 10px; }
+  .eq-bars span:nth-child(3) { animation: eq-bounce 0.4s ease-in-out infinite alternate; animation-delay: 0.2s; height: 8px; }
+  .eq-bars span:nth-child(4) { animation: eq-bounce 0.5s ease-in-out infinite alternate; animation-delay: 0.15s; height: 5px; }
 
   @keyframes eq-bounce {
     0% { height: 3px; }

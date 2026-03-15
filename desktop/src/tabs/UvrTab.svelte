@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { open as openDialog } from "@tauri-apps/api/dialog";
   import { uvrForm, uvrModels, uvrFormats, uvrStems, toasts } from "$lib/state";
-  import { postJob, loadUvrModels, clearUvrModels, openFilePath } from "$lib/api";
+  import { postJob, loadUvrModels, clearUvrModels } from "$lib/api";
   import { UVR_ARCHS } from "$lib/types";
   import type { UvrArch } from "$lib/types";
-  import { basename } from "$lib/utils";
+  import AudioDropZone from "../components/AudioDropZone.svelte";
+  import StemPlayer from "../components/StemPlayer.svelte";
   import Accordion from "../components/Accordion.svelte";
   import Slider from "../components/Slider.svelte";
   import Field from "../components/Field.svelte";
@@ -19,7 +19,6 @@
     if (models.length && !models.includes($uvrForm.model_key)) {
       $uvrForm.model_key = models[0];
     }
-    // Сбрасываем параметры на дефолтные для архитектуры
     if (arch === "roformer" || arch === "mdx23c") {
       $uvrForm.segment_size = 256;
       $uvrForm.overlap = 8;
@@ -33,16 +32,6 @@
       $uvrForm.segment_size = 40;
       $uvrForm.overlap = 0.25;
       $uvrForm.shifts = 2;
-    }
-  }
-
-  async function pickAudio() {
-    const sel = await openDialog({
-      multiple: false,
-      filters: [{ name: "Audio", extensions: ["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma"] }],
-    });
-    if (typeof sel === "string") {
-      $uvrForm.audio_path = sel;
     }
   }
 
@@ -101,12 +90,11 @@
   </Field>
 
   <!-- Входной файл -->
-  <Field label="Входной файл">
-    <div class="row">
-      <input type="text" bind:value={$uvrForm.audio_path} placeholder="Путь к аудио…" />
-      <button class="btn" on:click={pickAudio}>Выбрать</button>
-    </div>
-  </Field>
+  <AudioDropZone
+    bind:value={$uvrForm.audio_path}
+    extensions={["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma"]}
+    placeholder="Перетащите аудиофайл или нажмите для выбора"
+  />
 
   <!-- Формат -->
   <Field label="Формат выхода">
@@ -119,7 +107,6 @@
 
   <!-- Параметры сепарации -->
   <Accordion title="Параметры сепарации">
-
     {#if $uvrForm.arch === "roformer" || $uvrForm.arch === "mdx23c"}
       <label class="checkbox-wrap">
         <input type="checkbox" bind:checked={$uvrForm.override_segment_size} />
@@ -198,18 +185,13 @@
   <!-- Результаты -->
   {#if stems.length > 0}
     <div class="hr" />
-    <h2>Результат</h2>
+    <div class="stems-header">
+      <h2>Результат</h2>
+      <span class="stems-count">{stems.length} {stems.length === 1 ? "стем" : stems.length < 5 ? "стема" : "стемов"}</span>
+    </div>
     <div class="stems-grid">
-      {#each stems as stem, i}
-        <div class="stem-card">
-          <div class="stem-header">
-            <span class="stem-name" title={stem}>{basename(stem)}</span>
-            <button class="iconBtn" title="Открыть файл" on:click={() => openFilePath(stem)}>📄</button>
-          </div>
-          <audio controls preload="metadata" src={stem} class="stem-audio">
-            <track kind="captions" />
-          </audio>
-        </div>
+      {#each stems as stem (stem)}
+        <StemPlayer path={stem} />
       {/each}
     </div>
   {/if}
@@ -251,52 +233,25 @@
     box-shadow: inset 0 -2px 0 var(--accent);
   }
 
-  .stems-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .stem-card {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    transition: border-color 0.2s ease;
-  }
-
-  .stem-card:hover {
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-
-  .stem-header {
+  .stems-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
   }
 
-  .stem-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-    flex: 1;
+  .stems-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
   }
 
-  .stem-audio {
-    width: 100%;
-    height: 32px;
-    border-radius: 6px;
-  }
-
-  .stem-audio::-webkit-media-controls-panel {
-    background: rgba(255, 255, 255, 0.05);
+  .stems-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 </style>
