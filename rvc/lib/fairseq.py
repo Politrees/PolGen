@@ -1074,7 +1074,7 @@ class AdapterFast(nn.Module):
 
 class FeedForwardModule(nn.Module):
     def __init__(self, input_feat, hidden_units, dropout1, dropout2, activation_fn="swish", bias=True):
-        super(FeedForwardModule, self).__init__()
+        super().__init__()
         self.layer_norm = LayerNorm(input_feat)
         self.w_1 = nn.Linear(input_feat, hidden_units, bias=bias)
         self.w_2 = nn.Linear(hidden_units, input_feat, bias=bias)
@@ -1088,7 +1088,7 @@ class FeedForwardModule(nn.Module):
 
 class ConvolutionModule(nn.Module):
     def __init__(self, embed_dim, channels, depthwise_kernel_size, dropout, activation_fn="swish", bias=False, export=False):
-        super(ConvolutionModule, self).__init__()
+        super().__init__()
         assert (depthwise_kernel_size - 1) % 2 == 0
         self.layer_norm = LayerNorm(embed_dim, export=export)
         self.pointwise_conv1 = nn.Conv1d(embed_dim, 2 * channels, kernel_size=1, stride=1, padding=0, bias=bias)
@@ -1147,7 +1147,7 @@ class RotaryPositionalEmbedding(nn.Module):
 
 class ESPNETMultiHeadedAttention(nn.Module):
     def __init__(self, n_feat, n_head, dropout):
-        super(ESPNETMultiHeadedAttention, self).__init__()
+        super().__init__()
         assert n_feat % n_head == 0
         self.d_k = n_feat // n_head
         self.h = n_head
@@ -1264,7 +1264,7 @@ class ConformerEncoderLayer(nn.Module):
         pos_enc_type="abs",
     ):
         self.pos_enc_type = pos_enc_type
-        super(ConformerEncoderLayer, self).__init__()
+        super().__init__()
         self.ffn1 = FeedForwardModule(embed_dim, ffn_embed_dim, dropout, dropout)
         self.self_attn_layer_norm = LayerNorm(embed_dim, export=False)
         self.self_attn_dropout = nn.Dropout(dropout)
