@@ -1,6 +1,5 @@
 import gradio as gr
 
-from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
 from gradio_ui.components.helpers import (
     OUTPUT_FORMAT,
     edge_voices,
@@ -14,6 +13,7 @@ from gradio_ui.components.helpers import (
     update_visible,
 )
 from gradio_ui.components.settings import settings
+from rvc.infer.infer import rvc_edgetts_infer, rvc_infer
 
 
 def inference_tab():

@@ -87,6 +87,7 @@ def process_audio(input_path, output_path, overlap, flashsr, device):
 def upscale(input, output, overlap, device):
     # Загружаем модели FlashSR при первом использовании
     from assets.model_installer import check_and_install_models
+
     check_and_install_models(include_flashsr=True)
 
     from FlashSR.FlashSR import FlashSR
