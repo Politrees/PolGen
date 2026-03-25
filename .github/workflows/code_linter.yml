@@ -33,7 +33,7 @@ jobs:
         continue-on-error: true
 
       - name: Run PyLint
-        run: pylint $(git ls-files '*.py') --max-line-length 140 --disable=E1101
+        run: pylint $(git ls-files '*.py') --max-line-length 140 --disable=R0801
         continue-on-error: true
 
       - name: Run Vulture
