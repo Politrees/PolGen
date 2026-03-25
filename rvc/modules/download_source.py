@@ -10,13 +10,13 @@ def download_file(url, zip_name, progress=gr.Progress(track_tqdm=True)):
     try:
         parsed_url = urlparse(url)
         hostname = parsed_url.hostname
-        if hostname in "drive.google.com":
+        if hostname == "drive.google.com":
             download_from_google_drive(url, zip_name, progress)
-        elif hostname in "huggingface.co":
+        elif hostname == "huggingface.co":
             download_from_huggingface(url, zip_name, progress)
-        elif hostname in "pixeldrain.com":
+        elif hostname == "pixeldrain.com":
             download_from_pixeldrain(url, zip_name, progress)
-        elif hostname in "mega.nz":
+        elif hostname == "mega.nz":
             download_from_mega(url, zip_name, progress)
         elif hostname in {"disk.yandex.ru", "yadi.sk"}:
             download_from_yandex(url, zip_name, progress)

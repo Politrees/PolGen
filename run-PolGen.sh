@@ -3,7 +3,7 @@
 set -e
 
 if [ ! -d "env" ]; then
-    echo "Please run './PolGen-Installer.sh' first to set up the environment."
+    echo "Please run './run-PolGen-installer.sh' first to set up the environment."
     exit 1
 fi
 

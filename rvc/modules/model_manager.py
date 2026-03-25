@@ -31,7 +31,7 @@ def extract_zip(extraction_folder, zip_name):
 
     if not model_filepath:
         # Если файл модели не найден, вызываем ошибку
-        raise gr.Error("Не найден файл модели .pth в распакованном zip-файле. Проверьте содержимое в {extraction_folder}.")
+        raise gr.Error(f"Не найден файл модели .pth в распакованном zip-файле. Проверьте содержимое в {extraction_folder}.")
 
     # Переименовываем и удаляем ненужные папки
     rename_and_cleanup(extraction_folder, model_filepath, index_filepath)

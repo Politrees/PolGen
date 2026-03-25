@@ -103,5 +103,5 @@ install_dependencies
 install_ffmpeg
 
 echo "PolGen has been installed successfully!"
-echo "To start PolGen, please run './PolGen.sh'."
+echo "To start PolGen, please run './run-PolGen.sh'."
 echo
