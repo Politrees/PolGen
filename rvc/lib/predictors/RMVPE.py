@@ -353,7 +353,7 @@ class RMVPEF0Predictor:
         return self.decode(hidden, thred=thred)
 
     def infer_from_audio_modified(self, audio, thred=0.02, f0_min=50, f0_max=1100, window_size=3):
-        f0 = infer_from_audio(audio, thred)
+        f0 = self.infer_from_audio(audio, thred)
         f0[(f0 < f0_min) | (f0 > f0_max)] = 0
         smoothed_f0 = medfilt(f0, kernel_size=window_size)
         return smoothed_f0
