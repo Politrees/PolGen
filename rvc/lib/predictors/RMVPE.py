@@ -309,7 +309,7 @@ class RMVPEF0Predictor:
         model.load_state_dict(ckpt)
         model.eval()
         self.model = model
-        self.device = device
+        self.device = torch.device(device) if isinstance(device, str) else device
         self.mel_extractor = MelSpectrogram(N_MELS, 16000, 1024, 160, None, 30, 8000).to(device)
         self.model = self.model.to(device)
         cents_mapping = 20 * np.arange(N_CLASS) + 1997.3794084376191
