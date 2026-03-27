@@ -341,14 +341,8 @@ class RMVPEF0Predictor:
         with torch.inference_mode():
             extracted_mel = self.mel_extractor(audio, center=True)
             del audio
-            if self.device.type == "cuda":
-                torch.cuda.empty_cache()
-    
             hidden = self.mel2hidden(extracted_mel)
             del extracted_mel
-            if self.device.type == "cuda":
-                torch.cuda.empty_cache()
-    
         hidden = hidden.squeeze(0).cpu().numpy()
         return self.decode(hidden, thred=thred)
 
