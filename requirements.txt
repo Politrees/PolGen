@@ -11,8 +11,6 @@ numpy==1.26.4
 PolFlashSR
 PolUVR[gpu]; sys_platform == 'linux' or sys_platform == 'win32'
 PolUVR[cpu]; sys_platform == 'darwin'
-
-sounddevice
 edge-tts==7.2.7
 ffmpeg-python>=0.2.0
 
