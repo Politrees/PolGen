@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import traceback
 import warnings
 from typing import Any
 
@@ -11,7 +12,6 @@ logging.basicConfig(level=logging.WARNING)  # Disable all logs, except WARNING a
 warnings.filterwarnings("ignore")  # Disable all warnings
 
 import gradio as gr
-from PolUVR.utils import PolUVR_UI
 
 from assets.model_installer import check_and_install_models
 from assets.notebook_check import colab_check, kaggle_check
@@ -33,6 +33,22 @@ MAX_PORT_ATTEMPTS = 10
 
 OUTPUT_MESSAGE_COMPONENT = output_message()
 RUN_FROM_JUPYTER_NOTEBOOKS = colab_check() or kaggle_check()
+
+
+def check_poluvr() -> tuple[str, str, str, Any]:
+    """Проверяет, можно ли импортировать PolUVR, и возвращает данные для UI."""
+    try:
+        from PolUVR.utils import PolUVR_UI as poluvr_ui
+        return "UVR | PolUVR", "", "", poluvr_ui
+    except Exception as error:
+        return (
+            "UVR | PolUVR ⚠️",
+            "Технические чоколадки: UVR временно отдыхает.",
+            traceback.format_exc(),
+            None,
+        )
+
+uvr_title, uvr_message, uvr_error, PolUVR_UI = check_poluvr()
 
 
 def is_offline_mode() -> bool:
@@ -69,13 +85,17 @@ with gr.Blocks(
         with gr.Tab("TTS | Преобразование текста в речь"):
             edge_tts_tab()
 
-    with gr.Tab("UVR | PolUVR"):
-        if is_offline_mode():
-            gr.HTML(
-                "<center><h3>PolUVR не будет функционировать без подключения к интернету, если вы ранее не установили необходимые модели.</h3></center>",
-            )
-        # https://github.com/Politrees/PolUVR?tab=readme-ov-file#integrate-our-interface-into-your-gradio-projects
-        PolUVR_UI("models/UVR_models", "output/UVR_output")
+    with gr.Tab(uvr_title):
+        if PolUVR_UI is not None:
+            if is_offline_mode():
+                gr.HTML(
+                    "<center><h3>PolUVR не будет функционировать без подключения к интернету, если вы ранее не установили необходимые модели.</h3></center>",
+                )
+
+            PolUVR_UI("models/UVR_models", "output/UVR_output")
+        else:
+            gr.HTML(f"<center><h2>{uvr_message}</h2></center>")
+            gr.Code(value=uvr_error, language="python", interactive=False, show_label=False)
 
     with gr.Tab("Загрузка моделей"):
         if not is_offline_mode():
@@ -124,6 +144,9 @@ if __name__ == "__main__":
     if __version_info__["is_prerelease"]:
         print(f"║{'[!] Pre-release версия':^42}║")
     print(f"╚{'═' * 42}╝\n")
+
+    if PolUVR_UI is None:
+        print("⚠️ [PolUVR] Импорт не удался, вкладка UVR будет отключена!")
 
     print("Запуск интерфейса PolGen. Подождите...")
     check_and_install_models()  # Checking and installing models
