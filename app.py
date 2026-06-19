@@ -39,14 +39,16 @@ def check_poluvr() -> tuple[str, str, str, Any]:
     """Проверяет, можно ли импортировать PolUVR, и возвращает данные для UI."""
     try:
         from PolUVR.utils import PolUVR_UI as poluvr_ui
+
         return "UVR | PolUVR", "", "", poluvr_ui
-    except Exception as error:
+    except Exception:
         return (
             "UVR | PolUVR ⚠️",
             "Технические чоколадки: UVR временно отдыхает.",
             traceback.format_exc(),
             None,
         )
+
 
 uvr_title, uvr_message, uvr_error, PolUVR_UI = check_poluvr()
 

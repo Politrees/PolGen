@@ -355,19 +355,19 @@ class RMVPEF0Predictor:
     def to_local_average_cents(self, salience, thred=0.05):
         n_frames = salience.shape[0]
         center = np.argmax(salience, axis=1)
-    
+
         offsets = np.arange(-4, 5)
         indices = center[:, None] + offsets[None, :]
         indices = np.clip(indices, 0, salience.shape[1] - 1)
-    
+
         rows = np.arange(n_frames)[:, None]
         local_salience = salience[rows, indices]
         local_cents = self.cents_mapping[indices + 4]
-    
+
         product_sum = np.sum(local_salience * local_cents, axis=1)
         weight_sum = np.sum(local_salience, axis=1)
         result = np.divide(product_sum, weight_sum, out=np.zeros(n_frames), where=weight_sum > 1e-8)
-    
+
         max_salience = np.max(salience, axis=1)
         result[max_salience <= thred] = 0
         return result
